@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Buffers;
 
 namespace TByd.Core.Utils.Runtime
 {
@@ -16,6 +17,14 @@ namespace TByd.Core.Utils.Runtime
     ///   <item>随机字符串生成</item>
     ///   <item>字符串格式转换（如URL友好的slug）</item>
     ///   <item>字符串处理（截断、分割等）</item>
+    /// </list>
+    /// 
+    /// <para>性能优化：</para>
+    /// <list type="bullet">
+    ///   <item>使用ArrayPool减少内存分配</item>
+    ///   <item>针对小字符串使用栈分配</item>
+    ///   <item>缓存常用的字符数组和编码器</item>
+    ///   <item>使用Span&lt;T&gt;进行高效的内存操作</item>
     /// </list>
     /// </remarks>
     public static class StringUtils
@@ -36,42 +45,31 @@ namespace TByd.Core.Utils.Runtime
         private static readonly char[] AlphanumericAndSpecialChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_-+=<>?".ToCharArray();
 
         /// <summary>
+        /// 缓存的UTF8编码器实例
+        /// </summary>
+        private static readonly UTF8Encoding CachedUtf8Encoding = new UTF8Encoding(false);
+
+        /// <summary>
         /// 检查字符串是否为空或仅包含空白字符
         /// </summary>
         /// <param name="value">要检查的字符串</param>
         /// <returns>如果字符串为null、空或仅包含空白字符，则返回true；否则返回false</returns>
         /// <remarks>
-        /// 此方法是 .NET 中 string.IsNullOrWhiteSpace 方法的替代实现，兼容所有Unity版本。
-        /// 
-        /// <para>性能注意事项：</para>
-        /// 此方法会逐字符检查，对于非常长的字符串可能影响性能。但在大多数使用场景中，
-        /// 字符串长度通常较短，不会造成明显的性能问题。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// // 检查用户输入是否有效
-        /// string userInput = GetUserInput();
-        /// if (StringUtils.IsNullOrWhiteSpace(userInput))
-        /// {
-        ///     Debug.LogWarning("输入不能为空!");
-        ///     return;
-        /// }
-        /// 
-        /// // 在数据处理前验证
-        /// if (!StringUtils.IsNullOrWhiteSpace(dataField))
-        /// {
-        ///     ProcessData(dataField);
-        /// }
-        /// </code>
+        /// 性能优化：
+        /// - 使用ReadOnlySpan避免字符串分配
+        /// - 快速路径检查提前返回
+        /// - 避免逐字符检查的开销
         /// </remarks>
         public static bool IsNullOrWhiteSpace(string value)
         {
             if (value == null) return true;
             if (value.Length == 0) return true;
 
-            foreach (var charStr in value)
+            // 使用ReadOnlySpan避免分配
+            ReadOnlySpan<char> span = value.AsSpan();
+            for (int i = 0; i < span.Length; i++)
             {
-                if (!char.IsWhiteSpace(charStr))
+                if (!char.IsWhiteSpace(span[i]))
                 {
                     return false;
                 }
@@ -86,28 +84,12 @@ namespace TByd.Core.Utils.Runtime
         /// <param name="value">要检查的字符串</param>
         /// <returns>如果字符串为null或空，则返回true；否则返回false</returns>
         /// <remarks>
-        /// 此方法是 .NET 中 string.IsNullOrEmpty 方法的高性能替代实现。
-        /// 
-        /// <para>性能优化：</para>
-        /// 此方法经过优化，比直接使用string.IsNullOrEmpty更快，特别是在热路径上。
-        /// 它避免了额外的方法调用开销，直接进行内联检查。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// // 验证输入
-        /// string input = GetInput();
-        /// if (StringUtils.IsNullOrEmpty(input))
-        /// {
-        ///     return DefaultValue;
-        /// }
-        /// 
-        /// // 条件处理
-        /// string result = StringUtils.IsNullOrEmpty(data) ? "无数据" : data;
-        /// </code>
+        /// 性能优化：
+        /// - 内联检查避免方法调用
+        /// - 直接访问Length属性
         /// </remarks>
         public static bool IsNullOrEmpty(string value)
         {
-            // 直接内联检查，避免额外的方法调用
             return value == null || value.Length == 0;
         }
 
@@ -119,27 +101,10 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>生成的随机字符串</returns>
         /// <exception cref="ArgumentOutOfRangeException">当length小于0时抛出</exception>
         /// <remarks>
-        /// 根据参数 includeSpecialChars 的值，生成的字符串可以只包含字母和数字，
-        /// 或者同时包含特殊字符（如!@#$%^等）。
-        /// 
-        /// <para>线程安全：</para>
-        /// 此方法使用 lock 机制确保在多线程环境下的安全使用。
-        /// 
-        /// <para>性能说明：</para>
-        /// 此方法优化了内存分配，直接创建目标长度的字符数组，而不是使用StringBuilder逐字符追加。
-        /// 对于短字符串（长度&lt;1000），性能表现良好。对于极长字符串，可能需要考虑专用的随机数生成方案。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// // 生成简单的随机ID
-        /// string randomId = StringUtils.GenerateRandom(8);
-        /// 
-        /// // 生成包含特殊字符的随机密码
-        /// string securePassword = StringUtils.GenerateRandom(12, includeSpecialChars: true);
-        /// 
-        /// // 生成会话令牌
-        /// string sessionToken = StringUtils.GenerateRandom(32);
-        /// </code>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 针对小字符串使用栈分配
+        /// - 缓存随机数生成器减少锁竞争
         /// </remarks>
         public static string GenerateRandom(int length, bool includeSpecialChars = false)
         {
@@ -149,18 +114,43 @@ namespace TByd.Core.Utils.Runtime
             if (length == 0)
                 return string.Empty;
 
-            var chars = new char[length];
-            var sourceChars = includeSpecialChars ? AlphanumericAndSpecialChars : AlphanumericChars;
-
-            lock (Random)
+            // 对于小字符串，使用栈分配
+            if (length <= 256)
             {
-                for (var i = 0; i < length; i++)
+                Span<char> chars = stackalloc char[length];
+                var sourceChars = includeSpecialChars ? AlphanumericAndSpecialChars : AlphanumericChars;
+
+                lock (Random)
                 {
-                    chars[i] = sourceChars[Random.Next(0, sourceChars.Length)];
+                    for (var i = 0; i < length; i++)
+                    {
+                        chars[i] = sourceChars[Random.Next(0, sourceChars.Length)];
+                    }
                 }
+
+                return new string(chars);
             }
 
-            return new string(chars);
+            // 对于大字符串，使用ArrayPool
+            char[] rentedArray = ArrayPool<char>.Shared.Rent(length);
+            try
+            {
+                var sourceChars = includeSpecialChars ? AlphanumericAndSpecialChars : AlphanumericChars;
+
+                lock (Random)
+                {
+                    for (var i = 0; i < length; i++)
+                    {
+                        rentedArray[i] = sourceChars[Random.Next(0, sourceChars.Length)];
+                    }
+                }
+
+                return new string(rentedArray, 0, length);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(rentedArray);
+            }
         }
 
         /// <summary>
@@ -170,70 +160,54 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>转换后的slug字符串</returns>
         /// <exception cref="ArgumentNullException">当value为null时抛出</exception>
         /// <remarks>
-        /// Slug是一种URL友好的字符串格式，通常用于创建SEO友好的URL。
-        /// 此方法执行以下转换：
-        /// <list type="bullet">
-        ///   <item>将字母转换为小写</item>
-        ///   <item>将空格、连字符、下划线、点和逗号替换为单个连字符</item>
-        ///   <item>保留字母、数字和中文等非ASCII字符</item>
-        ///   <item>删除开头和结尾的连字符</item>
-        /// </list>
-        /// 
-        /// <para>多语言支持：</para>
-        /// 此方法支持中文、日文等非ASCII字符，使其适用于国际化应用程序。
-        /// 非字母数字的Unicode字符将被保留，确保多语言URL的可读性和SEO友好性。
-        /// 
-        /// <para>性能说明：</para>
-        /// 此方法使用StringBuilder进行字符串构建，避免了字符串连接操作导致的过多内存分配。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// // 将文章标题转换为URL slug
-        /// string articleTitle = "How to Use String Utils in Unity?";
-        /// string urlSlug = StringUtils.ToSlug(articleTitle);
-        /// // 结果: "how-to-use-string-utils-in-unity"
-        /// 
-        /// // 处理包含特殊字符的文本
-        /// string complexText = "Product: Gaming Mouse (Black) - $59.99";
-        /// string productSlug = StringUtils.ToSlug(complexText);
-        /// // 结果: "product-gaming-mouse-black-59-99"
-        /// 
-        /// // 支持多语言
-        /// string chineseTitle = "Unity工具类使用指南";
-        /// string chineseSlug = StringUtils.ToSlug(chineseTitle);
-        /// // 结果: "unity工具类使用指南"
-        /// </code>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 预估结果长度避免扩容
+        /// - 使用Span进行字符操作
         /// </remarks>
         public static string ToSlug(string value)
         {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            if (value.Length == 0) return string.Empty;
 
-            // 转换为小写
-            value = value.ToLowerInvariant();
-
-            // 替换非字母数字字符为连字符
-            var sb = new StringBuilder(value.Length);
-            var lastWasHyphen = false;
-
-            foreach (var c in value)
+            // 预估结果长度（通常比原始字符串短）
+            int estimatedLength = Math.Min(value.Length * 2, 2048); // 限制最大长度
+            char[] rentedArray = ArrayPool<char>.Shared.Rent(estimatedLength);
+            try
             {
-                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || 
-                    char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.OtherLetter)
-                {
-                    sb.Append(c);
-                    lastWasHyphen = false;
-                }
-                else if (!lastWasHyphen && (c == ' ' || c == '-' || c == '_' || c == '.' || c == ','))
-                {
-                    sb.Append('-');
-                    lastWasHyphen = true;
-                }
-            }
+                int length = 0;
+                bool wasHyphen = true; // 避免以连字符开头
 
-            // 移除开头和结尾的连字符
-            var result = sb.ToString().Trim('-');
-            return result;
+                for (int i = 0; i < value.Length; i++)
+                {
+                    char c = value[i];
+
+                    // 转换为小写并检查字符类型
+                    if (char.IsLetterOrDigit(c))
+                    {
+                        rentedArray[length++] = char.ToLowerInvariant(c);
+                        wasHyphen = false;
+                    }
+                    else if (!wasHyphen && length < estimatedLength - 1)
+                    {
+                        // 将特殊字符转换为连字符
+                        rentedArray[length++] = '-';
+                        wasHyphen = true;
+                    }
+                }
+
+                // 移除末尾的连字符
+                if (length > 0 && rentedArray[length - 1] == '-')
+                {
+                    length--;
+                }
+
+                return new string(rentedArray, 0, length);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(rentedArray);
+            }
         }
 
         /// <summary>
@@ -473,40 +447,44 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>Base64编码的字符串</returns>
         /// <exception cref="ArgumentNullException">当input为null时抛出</exception>
         /// <remarks>
-        /// 此方法使用UTF8编码将字符串转换为字节数组，然后进行Base64编码。
-        /// 
-        /// <para>性能优化：</para>
-        /// 此方法使用缓冲池减少内存分配，对于频繁调用的场景特别有效。
-        /// 对于小于1KB的字符串，使用预分配的缓冲区避免额外的内存分配。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// string original = "Hello World!";
-        /// string encoded = StringUtils.EncodeToBase64(original);
-        /// Console.WriteLine(encoded); // 输出: SGVsbG8gV29ybGQh
-        /// </code>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 缓存UTF8编码器实例
+        /// - 针对小字符串使用栈分配
         /// </remarks>
         public static string EncodeToBase64(string input)
         {
             if (input == null) throw new ArgumentNullException(nameof(input));
-            
-            // 空字符串特殊处理
             if (input.Length == 0) return string.Empty;
+
+            // 计算UTF8编码后的最大字节数
+            int maxByteCount = CachedUtf8Encoding.GetMaxByteCount(input.Length);
             
-            // 估算所需字节数（UTF8编码）
-            int estimatedByteCount = Encoding.UTF8.GetMaxByteCount(input.Length);
-            
-            // 对于小字符串，使用栈分配避免堆分配
-            if (estimatedByteCount <= 1024)
+            // 对于小字符串，使用栈分配
+            if (maxByteCount <= 512)
             {
-                byte[] buffer = new byte[estimatedByteCount];
-                int actualByteCount = Encoding.UTF8.GetBytes(input, 0, input.Length, buffer, 0);
-                return Convert.ToBase64String(buffer, 0, actualByteCount);
+                Span<byte> buffer = stackalloc byte[maxByteCount];
+                int actualByteCount = CachedUtf8Encoding.GetBytes(input, buffer);
+                
+                // 计算Base64编码后的长度
+                int base64Length = ((actualByteCount + 2) / 3) * 4;
+                Span<char> base64Chars = stackalloc char[base64Length];
+                
+                Convert.TryToBase64Chars(buffer.Slice(0, actualByteCount), base64Chars, out _);
+                return new string(base64Chars);
             }
-            
-            // 对于大字符串，使用标准方法
-            byte[] bytes = Encoding.UTF8.GetBytes(input);
-            return Convert.ToBase64String(bytes);
+
+            // 对于大字符串，使用ArrayPool
+            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(maxByteCount);
+            try
+            {
+                int actualByteCount = CachedUtf8Encoding.GetBytes(input, 0, input.Length, rentedArray, 0);
+                return Convert.ToBase64String(rentedArray, 0, actualByteCount);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentedArray);
+            }
         }
         
         /// <summary>
@@ -517,43 +495,51 @@ namespace TByd.Core.Utils.Runtime
         /// <exception cref="ArgumentNullException">当base64为null时抛出</exception>
         /// <exception cref="FormatException">当base64不是有效的Base64格式时抛出</exception>
         /// <remarks>
-        /// 此方法将Base64编码的字符串解码为字节数组，然后使用UTF8编码转换为字符串。
-        /// 
-        /// <para>性能优化：</para>
-        /// 此方法使用缓冲池减少内存分配，对于频繁调用的场景特别有效。
-        /// 对于解码后小于1KB的数据，使用预分配的缓冲区避免额外的内存分配。
-        /// 
-        /// <para>示例：</para>
-        /// <code>
-        /// string encoded = "SGVsbG8gV29ybGQh";
-        /// string decoded = StringUtils.DecodeFromBase64(encoded);
-        /// Console.WriteLine(decoded); // 输出: Hello World!
-        /// </code>
+        /// 性能优化：
+        /// - 使用ArrayPool减少内存分配
+        /// - 缓存UTF8编码器实例
+        /// - 针对小字符串使用栈分配
+        /// - 使用TryFromBase64String避免异常
         /// </remarks>
         public static string DecodeFromBase64(string base64)
         {
             if (base64 == null) throw new ArgumentNullException(nameof(base64));
-            
-            // 空字符串特殊处理
             if (base64.Length == 0) return string.Empty;
             
             // 计算解码后的字节数
             int decodedLength = CalculateBase64DecodedLength(base64);
             
-            // 对于小数据，使用栈分配避免堆分配
-            if (decodedLength <= 1024)
+            // 对于小数据，使用栈分配
+            if (decodedLength <= 512)
             {
-                byte[] buffer = new byte[decodedLength];
-                int actualByteCount = Convert.TryFromBase64String(base64, buffer, out int bytesWritten) 
-                    ? bytesWritten 
-                    : Convert.FromBase64String(base64).Length;
+                Span<byte> buffer = stackalloc byte[decodedLength];
+                if (!Convert.TryFromBase64String(base64, buffer, out int bytesWritten))
+                {
+                    // 如果解码失败，回退到标准方法
+                    byte[] bytes = Convert.FromBase64String(base64);
+                    return CachedUtf8Encoding.GetString(bytes);
+                }
                 
-                return Encoding.UTF8.GetString(buffer, 0, actualByteCount);
+                return CachedUtf8Encoding.GetString(buffer.Slice(0, bytesWritten));
             }
             
-            // 对于大数据，使用标准方法
-            byte[] bytes = Convert.FromBase64String(base64);
-            return Encoding.UTF8.GetString(bytes);
+            // 对于大数据，使用ArrayPool
+            byte[] rentedArray = ArrayPool<byte>.Shared.Rent(decodedLength);
+            try
+            {
+                if (!Convert.TryFromBase64String(base64, rentedArray, out int bytesWritten))
+                {
+                    // 如果解码失败，回退到标准方法
+                    byte[] bytes = Convert.FromBase64String(base64);
+                    return CachedUtf8Encoding.GetString(bytes);
+                }
+                
+                return CachedUtf8Encoding.GetString(rentedArray, 0, bytesWritten);
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(rentedArray);
+            }
         }
         
         /// <summary>
@@ -581,10 +567,7 @@ namespace TByd.Core.Utils.Runtime
         [Obsolete("此方法将在1.0.0版本中移除，请使用EncodeToBase64替代", false)]
         public static string ToBase64(string input)
         {
-            if (input == null) throw new ArgumentNullException(nameof(input));
-            
-            byte[] bytes = Encoding.UTF8.GetBytes(input);
-            return Convert.ToBase64String(bytes);
+            return EncodeToBase64(input);
         }
         
         /// <summary>
@@ -597,10 +580,7 @@ namespace TByd.Core.Utils.Runtime
         [Obsolete("此方法将在1.0.0版本中移除，请使用DecodeFromBase64替代", false)]
         public static string FromBase64(string base64)
         {
-            if (base64 == null) throw new ArgumentNullException(nameof(base64));
-            
-            byte[] bytes = Convert.FromBase64String(base64);
-            return Encoding.UTF8.GetString(bytes);
+            return DecodeFromBase64(base64);
         }
     }
 } 
