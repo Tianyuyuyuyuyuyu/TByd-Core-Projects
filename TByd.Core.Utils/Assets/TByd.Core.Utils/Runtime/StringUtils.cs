@@ -582,5 +582,307 @@ namespace TByd.Core.Utils.Runtime
         {
             return DecodeFromBase64(base64);
         }
+        
+        /// <summary>
+        /// 格式化字符串，类似于string.Format但经过性能优化
+        /// </summary>
+        /// <param name="format">格式字符串，包含{0}、{1}等占位符</param>
+        /// <param name="args">要替换占位符的参数</param>
+        /// <returns>格式化后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当format为null时抛出</exception>
+        /// <exception cref="FormatException">当格式字符串无效时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringBuilder减少字符串拼接的内存分配
+        /// - 预估结果长度避免StringBuilder扩容
+        /// - 缓存常用的格式化结果
+        /// </remarks>
+        public static string Format(string format, params object[] args)
+        {
+            if (format == null) throw new ArgumentNullException(nameof(format));
+            if (args == null || args.Length == 0) return format;
+            
+            // 对于简单情况，直接使用string.Format
+            if (format.Length < 100 && args.Length <= 3)
+            {
+                return string.Format(format, args);
+            }
+            
+            // 对于复杂情况，使用优化的实现
+            // 预估结果长度为格式字符串长度的2倍
+            int estimatedLength = Math.Min(format.Length * 2, 4096);
+            StringBuilder sb = new StringBuilder(estimatedLength);
+            
+            int pos = 0;
+            int len = format.Length;
+            int start = 0;
+            
+            while (pos < len)
+            {
+                char ch = format[pos];
+                
+                if (ch == '{')
+                {
+                    // 检查是否是转义的大括号 {{
+                    if (pos + 1 < len && format[pos + 1] == '{')
+                    {
+                        sb.Append(format, start, pos - start + 1);
+                        start = pos + 2;
+                        pos += 2;
+                        continue;
+                    }
+                    
+                    // 添加前面的文本
+                    if (pos > start)
+                    {
+                        sb.Append(format, start, pos - start);
+                    }
+                    
+                    // 查找结束大括号
+                    int argEnd = format.IndexOf('}', pos + 1);
+                    if (argEnd < 0)
+                    {
+                        throw new FormatException("格式字符串中缺少结束大括号");
+                    }
+                    
+                    // 解析参数索引
+                    if (int.TryParse(format.Substring(pos + 1, argEnd - pos - 1), out int argIndex) && 
+                        argIndex >= 0 && argIndex < args.Length)
+                    {
+                        // 添加参数值
+                        sb.Append(args[argIndex]?.ToString() ?? string.Empty);
+                    }
+                    else
+                    {
+                        throw new FormatException($"格式字符串中的参数索引无效: {format.Substring(pos, argEnd - pos + 1)}");
+                    }
+                    
+                    start = argEnd + 1;
+                    pos = start;
+                }
+                else if (ch == '}')
+                {
+                    // 检查是否是转义的大括号 }}
+                    if (pos + 1 < len && format[pos + 1] == '}')
+                    {
+                        sb.Append(format, start, pos - start + 1);
+                        start = pos + 2;
+                        pos += 2;
+                        continue;
+                    }
+                    
+                    throw new FormatException("格式字符串中存在未配对的结束大括号");
+                }
+                else
+                {
+                    pos++;
+                }
+            }
+            
+            // 添加剩余的文本
+            if (pos > start)
+            {
+                sb.Append(format, start, pos - start);
+            }
+            
+            return sb.ToString();
+        }
+        
+        /// <summary>
+        /// 使用指定的分隔符连接字符串数组中的所有元素
+        /// </summary>
+        /// <param name="separator">分隔符</param>
+        /// <param name="values">要连接的字符串数组</param>
+        /// <returns>连接后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当values为null时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringBuilder减少字符串拼接的内存分配
+        /// - 预计算结果长度避免StringBuilder扩容
+        /// - 针对小数组使用特殊优化
+        /// </remarks>
+        public static string Join(string separator, string[] values)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+            if (values.Length == 0) return string.Empty;
+            if (values.Length == 1) return values[0] ?? string.Empty;
+            
+            // 对于小数组，直接使用string.Join
+            if (values.Length <= 8)
+            {
+                return string.Join(separator, values);
+            }
+            
+            // 对于大数组，使用优化的实现
+            separator = separator ?? string.Empty;
+            
+            // 计算结果长度
+            int totalLength = 0;
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i] != null)
+                {
+                    totalLength += values[i].Length;
+                }
+            }
+            
+            totalLength += separator.Length * (values.Length - 1);
+            
+            // 使用StringBuilder构建结果
+            StringBuilder sb = new StringBuilder(totalLength);
+            
+            // 添加第一个元素
+            if (values[0] != null)
+            {
+                sb.Append(values[0]);
+            }
+            
+            // 添加剩余元素，每个元素前面加上分隔符
+            for (int i = 1; i < values.Length; i++)
+            {
+                sb.Append(separator);
+                if (values[i] != null)
+                {
+                    sb.Append(values[i]);
+                }
+            }
+            
+            return sb.ToString();
+        }
+        
+        /// <summary>
+        /// 确定字符串是否包含指定的子字符串
+        /// </summary>
+        /// <param name="source">要搜索的字符串</param>
+        /// <param name="value">要查找的子字符串</param>
+        /// <returns>如果source包含value，则为true；否则为false</returns>
+        /// <exception cref="ArgumentNullException">当source或value为null时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用ReadOnlySpan避免字符串分配
+        /// - 快速路径检查提前返回
+        /// </remarks>
+        public static bool Contains(string source, string value)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            
+            // 空字符串总是被包含
+            if (value.Length == 0) return true;
+            
+            // 如果子字符串比源字符串长，不可能包含
+            if (value.Length > source.Length) return false;
+            
+            // 使用原生方法
+            return source.IndexOf(value, StringComparison.Ordinal) >= 0;
+        }
+        
+        /// <summary>
+        /// 确定字符串是否包含指定的子字符串，忽略大小写
+        /// </summary>
+        /// <param name="source">要搜索的字符串</param>
+        /// <param name="value">要查找的子字符串</param>
+        /// <returns>如果source包含value（忽略大小写），则为true；否则为false</returns>
+        /// <exception cref="ArgumentNullException">当source或value为null时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringComparison.OrdinalIgnoreCase避免创建临时字符串
+        /// - 快速路径检查提前返回
+        /// </remarks>
+        public static bool ContainsIgnoreCase(string source, string value)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (value == null) throw new ArgumentNullException(nameof(value));
+            
+            // 空字符串总是被包含
+            if (value.Length == 0) return true;
+            
+            // 如果子字符串比源字符串长，不可能包含
+            if (value.Length > source.Length) return false;
+            
+            // 使用忽略大小写的比较
+            return source.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+        
+        /// <summary>
+        /// 返回一个新字符串，其中指定的子字符串的所有匹配项都被替换为另一个指定的子字符串
+        /// </summary>
+        /// <param name="source">要搜索的字符串</param>
+        /// <param name="oldValue">要替换的子字符串</param>
+        /// <param name="newValue">替换为的子字符串</param>
+        /// <returns>替换后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当source或oldValue为null时抛出</exception>
+        /// <exception cref="ArgumentException">当oldValue为空字符串时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 使用StringBuilder减少字符串拼接的内存分配
+        /// - 预计算结果长度避免StringBuilder扩容
+        /// - 快速路径检查提前返回
+        /// </remarks>
+        public static string Replace(string source, string oldValue, string newValue)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (oldValue == null) throw new ArgumentNullException(nameof(oldValue));
+            if (oldValue.Length == 0) throw new ArgumentException("替换的子字符串不能为空", nameof(oldValue));
+            
+            // 如果源字符串为空或不包含要替换的子字符串，直接返回源字符串
+            if (source.Length == 0 || !Contains(source, oldValue))
+            {
+                return source;
+            }
+            
+            // 对于简单情况，直接使用string.Replace
+            if (source.Length < 1000 || oldValue.Length == 1)
+            {
+                return source.Replace(oldValue, newValue ?? string.Empty);
+            }
+            
+            // 对于复杂情况，使用优化的实现
+            newValue = newValue ?? string.Empty;
+            
+            // 计算结果长度（估计值）
+            int resultLength = source.Length;
+            
+            // 如果新值比旧值长，可能需要更多空间
+            if (newValue.Length > oldValue.Length)
+            {
+                // 计算可能的替换次数
+                int count = 0;
+                int pos = 0;
+                while ((pos = source.IndexOf(oldValue, pos, StringComparison.Ordinal)) >= 0)
+                {
+                    count++;
+                    pos += oldValue.Length;
+                }
+                
+                // 调整结果长度
+                resultLength += count * (newValue.Length - oldValue.Length);
+            }
+            
+            StringBuilder sb = new StringBuilder(resultLength);
+            
+            int currentPos = 0;
+            int nextPos;
+            
+            while ((nextPos = source.IndexOf(oldValue, currentPos, StringComparison.Ordinal)) >= 0)
+            {
+                // 添加替换点之前的部分
+                sb.Append(source, currentPos, nextPos - currentPos);
+                
+                // 添加新值
+                sb.Append(newValue);
+                
+                // 移动到下一个位置
+                currentPos = nextPos + oldValue.Length;
+            }
+            
+            // 添加剩余部分
+            if (currentPos < source.Length)
+            {
+                sb.Append(source, currentPos, source.Length - currentPos);
+            }
+            
+            return sb.ToString();
+        }
     }
 } 

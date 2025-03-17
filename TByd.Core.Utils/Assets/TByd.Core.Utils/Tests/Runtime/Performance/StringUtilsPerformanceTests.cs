@@ -249,7 +249,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                 {
                     for (int i = 0; i < 1000; i++)
                     {
-                        _testString.Length > 10 ? _testString.Substring(0, 10) : _testString;
+                        string result = _testString.Length > 10 ? _testString.Substring(0, 10) : _testString;
                     }
                 }
             );
@@ -261,7 +261,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                     string[] testArray = new string[] { "测试", "字符串", "连接", "性能" };
                     for (int i = 0; i < 1000; i++)
                     {
-                        StringUtils.Join(",", testArray);
+                        string result = StringUtils.Join(",", testArray);
                     }
                 },
                 "string.Join 内存分配",
@@ -270,7 +270,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                     string[] testArray = new string[] { "测试", "字符串", "连接", "性能" };
                     for (int i = 0; i < 1000; i++)
                     {
-                        string.Join(",", testArray);
+                        string result = string.Join(",", testArray);
                     }
                 }
             );
@@ -279,24 +279,8 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void GeneratePerformanceReport()
         {
-            // 运行所有测试并生成报告
-            Test_IsNullOrEmpty_Performance();
-            Test_IsNullOrWhiteSpace_Performance();
-            Test_Truncate_Performance();
-            Test_Base64_Performance();
-            Test_Format_Performance();
-            Test_Join_Performance();
-            Test_Contains_Performance();
-            Test_Replace_Performance();
-            Test_Memory_Allocation();
-            
-            string report = _testFramework.GenerateReport("StringUtils性能测试报告");
-            UnityEngine.Debug.Log(report);
-            
-            // 可以将报告保存到文件
-            string reportPath = Application.temporaryCachePath + "/StringUtilsPerformanceReport.md";
-            System.IO.File.WriteAllText(reportPath, report);
-            UnityEngine.Debug.Log($"性能测试报告已保存到: {reportPath}");
+            // 生成性能测试报告
+            PerformanceTestFramework.GenerateReport("StringUtils性能测试报告");
         }
     }
 } 
