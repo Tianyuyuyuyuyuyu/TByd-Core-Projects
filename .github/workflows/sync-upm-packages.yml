@@ -1,0 +1,111 @@
+name: 同步UPM包到包仓库
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'TByd.**/Assets/TByd.*/**'
+  workflow_dispatch: # 允许手动触发
+
+jobs:
+  sync-packages:
+    runs-on: ubuntu-latest
+    name: 同步所有UPM包
+    steps:
+      - name: 检出开发仓库
+        uses: actions/checkout@v3
+        with:
+          path: source-repo
+          
+      - name: 检出包仓库
+        uses: actions/checkout@v3
+        with:
+          repository: Tianyuyuyuyuyuyu/TByd-Core-Packages
+          path: package-repo
+          token: ${{ secrets.PAT }} # 需要一个有权限的Personal Access Token
+          
+      - name: 同步包目录
+        run: |
+          # 设置工作目录变量
+          SOURCE_ROOT=$(pwd)/source-repo
+          TARGET_ROOT=$(pwd)/package-repo
+          
+          echo "开始同步UPM包..."
+          
+          # 创建已同步包的列表用于后续清理
+          SYNCED_PACKAGES=()
+          
+          # 查找所有符合条件的包目录
+          cd $SOURCE_ROOT
+          for project_dir in TByd.*; do
+            if [ -d "$project_dir" ]; then
+              echo "检查项目: $project_dir"
+              
+              # 检查项目中的Assets目录
+              if [ -d "$project_dir/Assets" ]; then
+                # 查找Assets下的包目录
+                for package_dir in "$project_dir/Assets/TByd."*; do
+                  if [ -d "$package_dir" ]; then
+                    # 获取包名（去除路径前缀）
+                    base_package_name=$(basename "$package_dir")
+                    echo "发现UPM包: $base_package_name"
+                    
+                    # 获取小写包名用于目标路径
+                    package_name=$(echo "$base_package_name" | tr '[:upper:]' '[:lower:]')
+                    target_dir="$TARGET_ROOT/Packages/com.$package_name"
+                    
+                    # 记录已处理的包
+                    SYNCED_PACKAGES+=("com.$package_name")
+                    
+                    # 清空目标目录（如果存在）
+                    if [ -d "$target_dir" ]; then
+                      rm -rf "$target_dir"
+                    fi
+                    
+                    # 创建目标目录
+                    mkdir -p "$target_dir"
+                    
+                    # 使用rsync确保完全一致，包括隐藏文件
+                    rsync -av --delete "$package_dir/" "$target_dir/"
+                    
+                    echo "已同步: $base_package_name → com.$package_name"
+                    
+                    # 验证同步结果
+                    SOURCE_FILES=$(find "$package_dir" -type f | wc -l)
+                    TARGET_FILES=$(find "$target_dir" -type f | wc -l)
+                    echo "源目录文件数: $SOURCE_FILES, 目标目录文件数: $TARGET_FILES"
+                    
+                    if [ "$SOURCE_FILES" != "$TARGET_FILES" ]; then
+                      echo "警告: 文件数量不匹配，请检查同步结果"
+                    else
+                      echo "验证通过: 文件数量一致"
+                    fi
+                  fi
+                done
+              else
+                echo "警告: $project_dir 中没有找到Assets目录"
+              fi
+            fi
+          done
+          
+          # 进入包仓库目录
+          cd $TARGET_ROOT
+          
+          # 列出同步后的包
+          echo "同步后的包列表："
+          ls -la Packages/
+          
+          # 配置Git用户
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          # 添加变更
+          git add .
+          
+          # 如果有变更，提交并推送
+          if git diff --staged --quiet; then
+            echo "没有变更需要提交"
+          else
+            git commit -m "更新UPM包 [自动同步]"
+            git push
+          fi 
