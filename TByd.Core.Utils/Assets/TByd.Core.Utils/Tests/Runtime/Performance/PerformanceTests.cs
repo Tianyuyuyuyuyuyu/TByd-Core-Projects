@@ -12,6 +12,8 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
 {
     /// <summary>
     /// 性能测试类，用于测试和比较各个工具类的性能
+    /// 注意：此类中的测试正在逐步迁移到使用PerformanceTestFramework的专用测试类中
+    /// 请参考IOUtilsPerformanceTests、StringUtilsPerformanceTests等类
     /// </summary>
     public class PerformanceTests
     {
@@ -358,88 +360,6 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             }
             sw.Stop();
             UnityEngine.Debug.Log($"Manual MeasureExecutionTime: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
-        }
-        
-        [Test]
-        public void IOUtils_Performance_Test()
-        {
-            // 准备测试数据
-            string testFilePath = Application.temporaryCachePath + "/test.txt";
-            string testContent = "这是一个用于性能测试的文件内容，包含中文和English以及数字123456789";
-            
-            // 确保测试文件存在
-            System.IO.File.WriteAllText(testFilePath, testContent);
-            
-            // 预热
-            for (int i = 0; i < WarmupCount; i++)
-            {
-                IOUtils.GetFileExtension(testFilePath);
-                IOUtils.GetFileName(testFilePath);
-                IOUtils.GetDirectoryPath(testFilePath);
-            }
-            
-            // 测试GetFileExtension性能
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-            for (int i = 0; i < IterationCount; i++)
-            {
-                IOUtils.GetFileExtension(testFilePath);
-            }
-            sw.Stop();
-            UnityEngine.Debug.Log($"IOUtils.GetFileExtension: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
-            
-            // 测试原生Path.GetExtension性能
-            sw.Reset();
-            sw.Start();
-            for (int i = 0; i < IterationCount; i++)
-            {
-                System.IO.Path.GetExtension(testFilePath);
-            }
-            sw.Stop();
-            UnityEngine.Debug.Log($"Path.GetExtension: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
-            
-            // 测试GetFileName性能
-            sw.Reset();
-            sw.Start();
-            for (int i = 0; i < IterationCount; i++)
-            {
-                IOUtils.GetFileName(testFilePath);
-            }
-            sw.Stop();
-            UnityEngine.Debug.Log($"IOUtils.GetFileName: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
-            
-            // 测试原生Path.GetFileName性能
-            sw.Reset();
-            sw.Start();
-            for (int i = 0; i < IterationCount; i++)
-            {
-                System.IO.Path.GetFileName(testFilePath);
-            }
-            sw.Stop();
-            UnityEngine.Debug.Log($"Path.GetFileName: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
-            
-            // 测试GetDirectoryPath性能
-            sw.Reset();
-            sw.Start();
-            for (int i = 0; i < IterationCount; i++)
-            {
-                IOUtils.GetDirectoryPath(testFilePath);
-            }
-            sw.Stop();
-            UnityEngine.Debug.Log($"IOUtils.GetDirectoryPath: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
-            
-            // 测试原生Path.GetDirectoryName性能
-            sw.Reset();
-            sw.Start();
-            for (int i = 0; i < IterationCount; i++)
-            {
-                System.IO.Path.GetDirectoryName(testFilePath);
-            }
-            sw.Stop();
-            UnityEngine.Debug.Log($"Path.GetDirectoryName: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
-            
-            // 清理测试文件
-            System.IO.File.Delete(testFilePath);
         }
     }
 } 
