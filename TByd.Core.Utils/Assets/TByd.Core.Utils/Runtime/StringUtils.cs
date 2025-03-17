@@ -423,5 +423,85 @@ namespace TByd.Core.Utils.Runtime
             /// </remarks>
             public string Current { get; private set; }
         }
+
+        /// <summary>
+        /// 将字符串编码为Base64格式
+        /// </summary>
+        /// <param name="input">要编码的字符串</param>
+        /// <returns>Base64编码的字符串</returns>
+        /// <exception cref="ArgumentNullException">当input为null时抛出</exception>
+        [Obsolete("此方法将在1.0.0版本中移除，请使用EncodeToBase64替代", false)]
+        public static string ToBase64(string input)
+        {
+            if (input == null) throw new ArgumentNullException(nameof(input));
+            
+            byte[] bytes = Encoding.UTF8.GetBytes(input);
+            return Convert.ToBase64String(bytes);
+        }
+        
+        /// <summary>
+        /// 将Base64编码的字符串解码
+        /// </summary>
+        /// <param name="base64">要解码的Base64字符串</param>
+        /// <returns>解码后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当base64为null时抛出</exception>
+        /// <exception cref="FormatException">当base64不是有效的Base64格式时抛出</exception>
+        [Obsolete("此方法将在1.0.0版本中移除，请使用DecodeFromBase64替代", false)]
+        public static string FromBase64(string base64)
+        {
+            if (base64 == null) throw new ArgumentNullException(nameof(base64));
+            
+            byte[] bytes = Convert.FromBase64String(base64);
+            return Encoding.UTF8.GetString(bytes);
+        }
+        
+        /// <summary>
+        /// 将字符串编码为Base64格式
+        /// </summary>
+        /// <param name="input">要编码的字符串</param>
+        /// <returns>Base64编码的字符串</returns>
+        /// <exception cref="ArgumentNullException">当input为null时抛出</exception>
+        /// <remarks>
+        /// 此方法使用UTF8编码将字符串转换为字节数组，然后进行Base64编码。
+        /// 
+        /// <para>示例：</para>
+        /// <code>
+        /// string original = "Hello World!";
+        /// string encoded = StringUtils.EncodeToBase64(original);
+        /// Console.WriteLine(encoded); // 输出: SGVsbG8gV29ybGQh
+        /// </code>
+        /// </remarks>
+        public static string EncodeToBase64(string input)
+        {
+            if (input == null) throw new ArgumentNullException(nameof(input));
+            
+            byte[] bytes = Encoding.UTF8.GetBytes(input);
+            return Convert.ToBase64String(bytes);
+        }
+        
+        /// <summary>
+        /// 将Base64编码的字符串解码
+        /// </summary>
+        /// <param name="base64">要解码的Base64字符串</param>
+        /// <returns>解码后的字符串</returns>
+        /// <exception cref="ArgumentNullException">当base64为null时抛出</exception>
+        /// <exception cref="FormatException">当base64不是有效的Base64格式时抛出</exception>
+        /// <remarks>
+        /// 此方法将Base64编码的字符串解码为字节数组，然后使用UTF8编码转换为字符串。
+        /// 
+        /// <para>示例：</para>
+        /// <code>
+        /// string encoded = "SGVsbG8gV29ybGQh";
+        /// string decoded = StringUtils.DecodeFromBase64(encoded);
+        /// Console.WriteLine(decoded); // 输出: Hello World!
+        /// </code>
+        /// </remarks>
+        public static string DecodeFromBase64(string base64)
+        {
+            if (base64 == null) throw new ArgumentNullException(nameof(base64));
+            
+            byte[] bytes = Convert.FromBase64String(base64);
+            return Encoding.UTF8.GetString(bytes);
+        }
     }
 } 

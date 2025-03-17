@@ -306,5 +306,34 @@ namespace TByd.Core.Utils.Runtime
 
             return result;
         }
+
+        /// <summary>
+        /// 计算朝向目标点的旋转
+        /// </summary>
+        /// <param name="from">起始位置</param>
+        /// <param name="to">目标位置</param>
+        /// <param name="up">上方向向量，默认为Vector3.up</param>
+        /// <returns>朝向目标的旋转四元数</returns>
+        [Obsolete("此方法将在1.0.0版本中移除，请使用DirectionToRotation替代", false)]
+        public static Quaternion LookAt(Vector3 from, Vector3 to, Vector3 up = default)
+        {
+            if (up == default)
+                up = Vector3.up;
+                
+            Vector3 direction = (to - from).normalized;
+            return DirectionToRotation(direction, up);
+        }
+        
+        /// <summary>
+        /// 将变换朝向特定方向
+        /// </summary>
+        /// <param name="direction">要朝向的方向</param>
+        /// <param name="up">上方向向量，默认为Vector3.up</param>
+        /// <returns>朝向指定方向的旋转四元数</returns>
+        [Obsolete("此方法将在1.0.0版本中移除，请使用DirectionToRotation替代", false)]
+        public static Quaternion FaceDirection(Vector3 direction, Vector3 up = default)
+        {
+            return DirectionToRotation(direction, up);
+        }
     }
 } 
