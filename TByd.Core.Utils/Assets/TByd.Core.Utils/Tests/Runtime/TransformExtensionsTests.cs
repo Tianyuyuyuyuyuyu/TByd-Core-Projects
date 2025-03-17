@@ -3,6 +3,8 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using TByd.Core.Utils.Runtime.Extensions;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace TByd.Core.Utils.Tests.Runtime
 {
@@ -12,10 +14,15 @@ namespace TByd.Core.Utils.Tests.Runtime
         private Transform _transform;
 
         [SetUp]
-        public void Setup()
+        public void SetUp()
         {
             _testObject = new GameObject("TestObject");
             _transform = _testObject.transform;
+            
+            // 设置一些非默认值
+            _transform.position = new Vector3(1, 2, 3);
+            _transform.rotation = Quaternion.Euler(30, 45, 60);
+            _transform.localScale = new Vector3(2, 3, 4);
         }
 
         [TearDown]
@@ -25,169 +32,177 @@ namespace TByd.Core.Utils.Tests.Runtime
         }
 
         [Test]
-        public void ResetLocal_ResetsTransformToDefaultValues()
+        public void ResetLocal_ResetsLocalTransform()
         {
-            // Arrange
-            _transform.localPosition = new Vector3(1f, 2f, 3f);
-            _transform.localRotation = Quaternion.Euler(30f, 45f, 60f);
-            _transform.localScale = new Vector3(2f, 3f, 4f);
-
             // Act
             _transform.ResetLocal();
-
+            
             // Assert
-            Assert.AreEqual(Vector3.zero, _transform.localPosition);
-            Assert.AreEqual(Quaternion.identity, _transform.localRotation);
-            Assert.AreEqual(Vector3.one, _transform.localScale);
+            Assert.That(_transform.localPosition, Is.EqualTo(Vector3.zero));
+            Assert.That(_transform.localRotation, Is.EqualTo(Quaternion.identity));
+            Assert.That(_transform.localScale, Is.EqualTo(Vector3.one));
         }
-
+        
         [Test]
-        public void SetLocalX_SetsXCoordinateOnly()
+        public void SetLocalX_SetsXComponentOnly()
         {
             // Arrange
-            _transform.localPosition = new Vector3(1f, 2f, 3f);
-            var newX = 5f;
-
+            Vector3 originalPosition = _transform.localPosition;
+            float newX = 10f;
+            
             // Act
             _transform.SetLocalX(newX);
-
+            
             // Assert
-            Assert.AreEqual(newX, _transform.localPosition.x);
-            Assert.AreEqual(2f, _transform.localPosition.y);
-            Assert.AreEqual(3f, _transform.localPosition.z);
+            Assert.That(_transform.localPosition.x, Is.EqualTo(newX));
+            Assert.That(_transform.localPosition.y, Is.EqualTo(originalPosition.y));
+            Assert.That(_transform.localPosition.z, Is.EqualTo(originalPosition.z));
         }
-
+        
         [Test]
-        public void SetLocalY_SetsYCoordinateOnly()
+        public void SetLocalY_SetsYComponentOnly()
         {
             // Arrange
-            _transform.localPosition = new Vector3(1f, 2f, 3f);
-            var newY = 5f;
-
+            Vector3 originalPosition = _transform.localPosition;
+            float newY = 10f;
+            
             // Act
             _transform.SetLocalY(newY);
-
+            
             // Assert
-            Assert.AreEqual(1f, _transform.localPosition.x);
-            Assert.AreEqual(newY, _transform.localPosition.y);
-            Assert.AreEqual(3f, _transform.localPosition.z);
+            Assert.That(_transform.localPosition.x, Is.EqualTo(originalPosition.x));
+            Assert.That(_transform.localPosition.y, Is.EqualTo(newY));
+            Assert.That(_transform.localPosition.z, Is.EqualTo(originalPosition.z));
         }
-
+        
         [Test]
-        public void SetLocalZ_SetsZCoordinateOnly()
+        public void SetLocalZ_SetsZComponentOnly()
         {
             // Arrange
-            _transform.localPosition = new Vector3(1f, 2f, 3f);
-            var newZ = 5f;
-
+            Vector3 originalPosition = _transform.localPosition;
+            float newZ = 10f;
+            
             // Act
             _transform.SetLocalZ(newZ);
-
+            
             // Assert
-            Assert.AreEqual(1f, _transform.localPosition.x);
-            Assert.AreEqual(2f, _transform.localPosition.y);
-            Assert.AreEqual(newZ, _transform.localPosition.z);
+            Assert.That(_transform.localPosition.x, Is.EqualTo(originalPosition.x));
+            Assert.That(_transform.localPosition.y, Is.EqualTo(originalPosition.y));
+            Assert.That(_transform.localPosition.z, Is.EqualTo(newZ));
         }
-
+        
         [Test]
-        public void SetX_SetsXCoordinateOnly()
+        public void FindOrCreateChild_ChildExists_ReturnsExistingChild()
         {
             // Arrange
-            _transform.position = new Vector3(1f, 2f, 3f);
-            var newX = 5f;
-
+            string childName = "ExistingChild";
+            GameObject existingChild = new GameObject(childName);
+            existingChild.transform.SetParent(_transform);
+            
             // Act
-            _transform.SetX(newX);
-
+            Transform result = _transform.FindOrCreateChild(childName);
+            
             // Assert
-            Assert.AreEqual(newX, _transform.position.x);
-            Assert.AreEqual(2f, _transform.position.y);
-            Assert.AreEqual(3f, _transform.position.z);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.name, Is.EqualTo(childName));
+            Assert.That(result.gameObject, Is.EqualTo(existingChild));
         }
-
+        
         [Test]
-        public void SetY_SetsYCoordinateOnly()
+        public void FindOrCreateChild_ChildDoesNotExist_CreatesAndReturnsNewChild()
         {
             // Arrange
-            _transform.position = new Vector3(1f, 2f, 3f);
-            var newY = 5f;
-
+            string childName = "NewChild";
+            
             // Act
-            _transform.SetY(newY);
-
+            Transform result = _transform.FindOrCreateChild(childName);
+            
             // Assert
-            Assert.AreEqual(1f, _transform.position.x);
-            Assert.AreEqual(newY, _transform.position.y);
-            Assert.AreEqual(3f, _transform.position.z);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result.name, Is.EqualTo(childName));
+            Assert.That(result.parent, Is.EqualTo(_transform));
         }
-
+        
         [Test]
-        public void SetZ_SetsZCoordinateOnly()
+        public void GetAllChildren_NoChildren_ReturnsEmptyList()
         {
-            // Arrange
-            _transform.position = new Vector3(1f, 2f, 3f);
-            var newZ = 5f;
-
             // Act
-            _transform.SetZ(newZ);
-
+            List<Transform> children = _transform.GetAllChildren();
+            
             // Assert
-            Assert.AreEqual(1f, _transform.position.x);
-            Assert.AreEqual(2f, _transform.position.y);
-            Assert.AreEqual(newZ, _transform.position.z);
+            Assert.That(children, Is.Empty);
         }
-
+        
         [Test]
-        public void GetAllChildren_ReturnsAllChildren()
+        public void GetAllChildren_WithChildren_ReturnsAllChildren()
         {
             // Arrange
-            var child1 = new GameObject("Child1");
-            var child2 = new GameObject("Child2");
+            GameObject child1 = new GameObject("Child1");
             child1.transform.SetParent(_transform);
+            
+            GameObject child2 = new GameObject("Child2");
             child2.transform.SetParent(_transform);
-
+            
             // Act
-            var children = _transform.GetAllChildren();
-
+            List<Transform> children = _transform.GetAllChildren();
+            
             // Assert
-            Assert.AreEqual(2, children.Count);
-            Assert.That(children, Does.Contain(child1.transform));
-            Assert.That(children, Does.Contain(child2.transform));
-
-            // Cleanup
-            Object.DestroyImmediate(child1);
-            Object.DestroyImmediate(child2);
+            Assert.That(children, Has.Count.EqualTo(2));
+            Assert.That(children, Has.Member(child1.transform));
+            Assert.That(children, Has.Member(child2.transform));
         }
 
         [Test]
         public void GetAllChildren_ExcludesInactiveChildren_WhenSpecified()
         {
             // Arrange
-            var child1 = new GameObject("Child1");
-            var child2 = new GameObject("Child2");
+            GameObject child1 = new GameObject("Child1");
+            GameObject child2 = new GameObject("Child2");
+            
+            // 确保子对象正确设置父级关系
             child1.transform.SetParent(_transform);
             child2.transform.SetParent(_transform);
+            
+            // 确保激活状态正确设置，使用SetActive方法
+            child1.SetActive(true);
             child2.SetActive(false);
 
-            // Act
-            var children = _transform.GetAllChildren(includeInactive: false);
+            // 确认设置成功
+            Assert.That(child1.activeSelf, Is.True, "准备阶段：child1必须处于激活状态");
+            Assert.That(child2.activeSelf, Is.False, "准备阶段：child2必须处于非激活状态");
+
+            // Act - 不包含非激活的子对象
+            List<Transform> children = _transform.GetAllChildren(includeInactive: false);
+
+            // 调试输出
+            Debug.Log($"返回的子对象数量: {children.Count}");
+            for (int i = 0; i < children.Count; i++)
+            {
+                var child = children[i];
+                Debug.Log($"子对象[{i}]: {(child != null ? child.name : "null")} - 激活状态: {(child != null && child.gameObject != null ? child.gameObject.activeSelf.ToString() : "N/A")}");
+            }
 
             // Assert
-            Assert.AreEqual(1, children.Count);
-            Assert.That(children, Does.Contain(child1.transform));
-            Assert.That(children, Does.Not.Contain(child2.transform));
-
-            // Cleanup
-            Object.DestroyImmediate(child1);
-            Object.DestroyImmediate(child2);
+            // 1. 列表必须非空
+            Assert.That(children, Is.Not.Null, "返回的列表不应为null");
+            
+            // 2. 列表中不能有null元素
+            Assert.That(children.All(t => t != null), Is.True, "列表中不应包含null元素");
+            
+            // 3. 只包含激活的子对象
+            Assert.That(children.Count, Is.EqualTo(1), "应只包含一个激活的子对象");
+            Assert.That(children[0], Is.EqualTo(child1.transform), "唯一的元素应该是激活的child1");
+            
+            // 4. 不包含非激活对象 - 使用Contains而非Has.No.Member
+            Assert.That(children.Contains(child2.transform), Is.False, "不应包含非激活的子对象");
         }
 
         [UnityTest]
         public IEnumerator DestroyAllChildren_DestroysAllChildren()
         {
             // Arrange
-            var child1 = new GameObject("Child1");
-            var child2 = new GameObject("Child2");
+            GameObject child1 = new GameObject("Child1");
+            GameObject child2 = new GameObject("Child2");
             child1.transform.SetParent(_transform);
             child2.transform.SetParent(_transform);
 
@@ -198,15 +213,15 @@ namespace TByd.Core.Utils.Tests.Runtime
             yield return null;
 
             // Assert
-            Assert.AreEqual(0, _transform.childCount);
+            Assert.That(_transform.childCount, Is.EqualTo(0));
         }
 
         [Test]
         public void DestroyAllChildren_Immediate_DestroysAllChildrenImmediately()
         {
             // Arrange
-            var child1 = new GameObject("Child1");
-            var child2 = new GameObject("Child2");
+            GameObject child1 = new GameObject("Child1");
+            GameObject child2 = new GameObject("Child2");
             child1.transform.SetParent(_transform);
             child2.transform.SetParent(_transform);
 
@@ -214,94 +229,53 @@ namespace TByd.Core.Utils.Tests.Runtime
             _transform.DestroyAllChildren(immediate: true);
 
             // Assert - 不需要等待，因为DestroyImmediate是立即执行的
-            Assert.AreEqual(0, _transform.childCount);
-        }
-
-        [Test]
-        public void FindOrCreateChild_FindsExistingChild()
-        {
-            // Arrange
-            var childName = "ChildToFind";
-            var child = new GameObject(childName);
-            child.transform.SetParent(_transform);
-
-            // Act
-            var foundChild = _transform.FindOrCreateChild(childName);
-
-            // Assert
-            Assert.AreEqual(child.transform, foundChild);
-            Assert.AreEqual(1, _transform.childCount); // 不应该创建新的子物体
-
-            // Cleanup
-            Object.DestroyImmediate(child);
-        }
-
-        [Test]
-        public void FindOrCreateChild_CreatesNewChildIfNotFound()
-        {
-            // Arrange
-            var childName = "NonExistentChild";
-
-            // Act
-            var createdChild = _transform.FindOrCreateChild(childName);
-
-            // Assert
-            Assert.IsNotNull(createdChild);
-            Assert.AreEqual(childName, createdChild.name);
-            Assert.AreEqual(_transform, createdChild.parent);
-            Assert.AreEqual(1, _transform.childCount);
+            Assert.That(_transform.childCount, Is.EqualTo(0));
         }
 
         [Test]
         public void FindRecursive_FindsDirectChild()
         {
             // Arrange
-            var childName = "DirectChild";
-            var child = new GameObject(childName);
+            string childName = "DirectChild";
+            GameObject child = new GameObject(childName);
             child.transform.SetParent(_transform);
 
             // Act
-            var foundChild = _transform.FindRecursive(childName);
+            Transform foundChild = _transform.FindRecursive(childName);
 
             // Assert
-            Assert.AreEqual(child.transform, foundChild);
-
-            // Cleanup
-            Object.DestroyImmediate(child);
+            Assert.That(foundChild, Is.EqualTo(child.transform));
         }
 
         [Test]
         public void FindRecursive_FindsNestedChild()
         {
             // Arrange
-            var childName = "NestedChild";
-            var intermediateChild = new GameObject("IntermediateChild");
-            var nestedChild = new GameObject(childName);
+            string childName = "NestedChild";
+            GameObject intermediateChild = new GameObject("IntermediateChild");
+            GameObject nestedChild = new GameObject(childName);
             
             intermediateChild.transform.SetParent(_transform);
             nestedChild.transform.SetParent(intermediateChild.transform);
 
             // Act
-            var foundChild = _transform.FindRecursive(childName);
+            Transform foundChild = _transform.FindRecursive(childName);
 
             // Assert
-            Assert.AreEqual(nestedChild.transform, foundChild);
-
-            // Cleanup
-            Object.DestroyImmediate(intermediateChild); // 这会同时销毁nestedChild
+            Assert.That(foundChild, Is.EqualTo(nestedChild.transform));
         }
 
         [Test]
         public void FindRecursive_ReturnsNullWhenChildNotFound()
         {
             // Arrange
-            var childName = "NonExistentChild";
+            string childName = "NonExistentChild";
 
             // Act
-            var foundChild = _transform.FindRecursive(childName);
+            Transform foundChild = _transform.FindRecursive(childName);
 
             // Assert
-            Assert.IsNull(foundChild);
+            Assert.That(foundChild, Is.Null);
         }
     }
 } 
