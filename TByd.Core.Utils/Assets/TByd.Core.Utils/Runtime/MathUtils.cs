@@ -215,27 +215,49 @@ namespace TByd.Core.Utils.Runtime
         /// </remarks>
         public static float Remap(float value, float fromMin, float fromMax, float toMin, float toMax)
         {
-            // 快速路径：检查value是否等于边界值
-            if (value <= fromMin)
-                return toMin;
-            if (value >= fromMax)
-                return toMax;
-                
-            // 当输入范围为零时，返回输出范围的中点
+            // 处理零范围输入
             if (Mathf.Approximately(fromMax, fromMin))
             {
                 return (toMin + toMax) * 0.5f;
             }
             
-            // 快速路径：常见的[0,1]映射场景
-            if (Mathf.Approximately(fromMin, 0f) && Mathf.Approximately(fromMax, 1f))
+            // 处理反转范围
+            bool fromRangeInverted = fromMax < fromMin;
+            bool toRangeInverted = toMax < toMin;
+            
+            // 规范化范围，确保 min < max
+            if (fromRangeInverted)
             {
-                return Mathf.LerpUnclamped(toMin, toMax, value);
+                float temp = fromMin;
+                fromMin = fromMax;
+                fromMax = temp;
             }
             
-            // 优化的映射计算，避免两步计算，直接一步计算结果
-            float scale = (toMax - toMin) / (fromMax - fromMin);
-            return toMin + (value - fromMin) * scale;
+            if (toRangeInverted)
+            {
+                float temp = toMin;
+                toMin = toMax;
+                toMax = temp;
+            }
+            
+            // 处理边界情况
+            if (value <= Mathf.Min(fromMin, fromMax))
+                return fromRangeInverted == toRangeInverted ? toMin : toMax;
+            
+            if (value >= Mathf.Max(fromMin, fromMax))
+                return fromRangeInverted == toRangeInverted ? toMax : toMin;
+            
+            // 标准化值到 0-1 范围
+            float normalizedValue = (value - fromMin) / (fromMax - fromMin);
+            
+            // 如果输入范围被翻转且输出范围没有被翻转（或反之），需要翻转标准化值
+            if (fromRangeInverted != toRangeInverted)
+            {
+                normalizedValue = 1f - normalizedValue;
+            }
+            
+            // 映射到目标范围
+            return toMin + normalizedValue * (toMax - toMin);
         }
 
         /// <summary>
@@ -281,10 +303,10 @@ namespace TByd.Core.Utils.Runtime
                 return Quaternion.Euler(0f, 180f, 0f);
                 
             if (Vector3.SqrMagnitude(direction - Vector3.up) < 1e-8f)
-                return Quaternion.Euler(270f, 0f, 0f);
+                return Quaternion.Euler(90f, 0f, 0f);
                 
             if (Vector3.SqrMagnitude(direction - Vector3.down) < 1e-8f)
-                return Quaternion.Euler(90f, 0f, 0f);
+                return Quaternion.Euler(-90f, 0f, 0f);
                 
             if (Vector3.SqrMagnitude(direction - Vector3.right) < 1e-8f)
                 return Quaternion.Euler(0f, 90f, 0f);
@@ -311,8 +333,8 @@ namespace TByd.Core.Utils.Runtime
             // 如果方向几乎垂直向上或向下，我们需要特殊处理
             if (Mathf.Abs(upDot) > 0.9999f)
             {
-                // 根据方向计算角度：向上为-90度，向下为90度
-                float angle = upDot > 0 ? -90f : 90f;
+                // 根据方向计算角度：向上为90度，向下为-90度
+                float angle = upDot > 0 ? 90f : -90f;
                 
                 // 使用缓存的四元数值（避免反复计算）
                 return Quaternion.Euler(angle, 0f, 0f);

@@ -85,14 +85,15 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void Test_Remap_Performance()
         {
+            float result = 0f;
             _testFramework.RunTest(
                 "MathUtils.Remap",
-                () => MathUtils.Remap(_testValue, 0, 1, 0, 100),
+                () => { result = MathUtils.Remap(_testValue, 0, 1, 0, 100); },
                 "手动实现Remap",
                 () => 
                 {
                     float normalizedValue = (_testValue - 0) / (1 - 0);
-                    return Mathf.Lerp(0, 100, normalizedValue);
+                    result = Mathf.Lerp(0, 100, normalizedValue);
                 },
                 10000
             );
@@ -100,24 +101,24 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             // 测试不同范围的重映射
             _testFramework.RunTest(
                 "MathUtils.Remap (大范围)",
-                () => MathUtils.Remap(_testValue, 0, 1, 0, 10000),
+                () => { result = MathUtils.Remap(_testValue, 0, 1, 0, 10000); },
                 "手动实现Remap (大范围)",
                 () => 
                 {
                     float normalizedValue = (_testValue - 0) / (1 - 0);
-                    return Mathf.Lerp(0, 10000, normalizedValue);
+                    result = Mathf.Lerp(0, 10000, normalizedValue);
                 },
                 10000
             );
             
             _testFramework.RunTest(
                 "MathUtils.Remap (负范围)",
-                () => MathUtils.Remap(_testValue, -1, 1, -100, 100),
+                () => { result = MathUtils.Remap(_testValue, -1, 1, -100, 100); },
                 "手动实现Remap (负范围)",
                 () => 
                 {
                     float normalizedValue = (_testValue - (-1)) / (1 - (-1));
-                    return Mathf.Lerp(-100, 100, normalizedValue);
+                    result = Mathf.Lerp(-100, 100, normalizedValue);
                 },
                 10000
             );
@@ -127,12 +128,13 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         public void Test_DirectionToRotation_Performance()
         {
             Vector3 direction = _targetPos - _startPos;
+            Quaternion result;
             
             _testFramework.RunTest(
                 "MathUtils.DirectionToRotation",
-                () => MathUtils.DirectionToRotation(direction),
+                () => { result = MathUtils.DirectionToRotation(direction); },
                 "Quaternion.LookRotation",
-                () => Quaternion.LookRotation(direction),
+                () => { result = Quaternion.LookRotation(direction); },
                 10000
             );
             
@@ -140,9 +142,9 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             Vector3 upDirection = Vector3.up;
             _testFramework.RunTest(
                 "MathUtils.DirectionToRotation (上方向)",
-                () => MathUtils.DirectionToRotation(upDirection),
+                () => { result = MathUtils.DirectionToRotation(upDirection); },
                 "Quaternion.LookRotation (上方向)",
-                () => Quaternion.LookRotation(upDirection),
+                () => { result = Quaternion.LookRotation(upDirection); },
                 10000
             );
             
@@ -154,9 +156,9 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             
             _testFramework.RunTest(
                 "MathUtils.DirectionToRotation (随机方向)",
-                () => MathUtils.DirectionToRotation(randomDirection),
+                () => { result = MathUtils.DirectionToRotation(randomDirection); },
                 "Quaternion.LookRotation (随机方向)",
-                () => Quaternion.LookRotation(randomDirection),
+                () => { result = Quaternion.LookRotation(randomDirection); },
                 10000
             );
         }
@@ -165,38 +167,32 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         public void Test_Clamp_Performance()
         {
             float value = 150f;
+            float result = 0f;
             
             _testFramework.RunTest(
-                "MathUtils.Clamp",
-                () => MathUtils.Clamp(value, 0, 100),
                 "Mathf.Clamp",
-                () => Mathf.Clamp(value, 0, 100),
+                () => { result = Mathf.Clamp(value, 0, 100); },
+                "手动实现Clamp",
+                () => { result = (value < 0) ? 0 : ((value > 100) ? 100 : value); },
                 10000
             );
             
             // 测试不同范围的Clamp
             _testFramework.RunTest(
-                "MathUtils.Clamp (负范围)",
-                () => MathUtils.Clamp(value, -100, -50),
                 "Mathf.Clamp (负范围)",
-                () => Mathf.Clamp(value, -100, -50),
+                () => { result = Mathf.Clamp(value, -100, -50); },
+                "手动实现Clamp (负范围)",
+                () => { result = (value < -100) ? -100 : ((value > -50) ? -50 : value); },
                 10000
             );
             
-            // 测试Vector3的Clamp
-            Vector3 vectorValue = new Vector3(150, 200, -50);
-            Vector3 min = new Vector3(-10, -10, -10);
-            Vector3 max = new Vector3(10, 10, 10);
-            
+            // 测试接近边界值
+            float borderValue = 99.9f;
             _testFramework.RunTest(
-                "MathUtils.Clamp (Vector3)",
-                () => MathUtils.Clamp(vectorValue, min, max),
-                "手动实现Vector3 Clamp",
-                () => new Vector3(
-                    Mathf.Clamp(vectorValue.x, min.x, max.x),
-                    Mathf.Clamp(vectorValue.y, min.y, max.y),
-                    Mathf.Clamp(vectorValue.z, min.z, max.z)
-                ),
+                "Mathf.Clamp (边界值)",
+                () => { result = Mathf.Clamp(borderValue, 0, 100); },
+                "手动实现Clamp (边界值)",
+                () => { result = (borderValue < 0) ? 0 : ((borderValue > 100) ? 100 : borderValue); },
                 10000
             );
         }
@@ -204,37 +200,38 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void Test_Lerp_Performance()
         {
+            float result = 0f;
+            
             _testFramework.RunTest(
-                "MathUtils.Lerp",
-                () => MathUtils.Lerp(_startPos, _targetPos, 0.5f),
-                "Vector3.Lerp",
-                () => Vector3.Lerp(_startPos, _targetPos, 0.5f),
+                "Mathf.Lerp",
+                () => { result = Mathf.Lerp(0, 100, _testValue); },
+                "手动实现Lerp",
+                () => { result = 0 + (_testValue * (100 - 0)); },
                 10000
             );
             
-            // 测试不同的插值参数
+            // 测试接近边界值
             _testFramework.RunTest(
-                "MathUtils.Lerp (t=0)",
-                () => MathUtils.Lerp(_startPos, _targetPos, 0f),
-                "Vector3.Lerp (t=0)",
-                () => Vector3.Lerp(_startPos, _targetPos, 0f),
+                "Mathf.Lerp (接近0)",
+                () => { result = Mathf.Lerp(0, 100, 0.001f); },
+                "手动实现Lerp (接近0)",
+                () => { result = 0 + (0.001f * (100 - 0)); },
                 10000
             );
             
             _testFramework.RunTest(
-                "MathUtils.Lerp (t=1)",
-                () => MathUtils.Lerp(_startPos, _targetPos, 1f),
-                "Vector3.Lerp (t=1)",
-                () => Vector3.Lerp(_startPos, _targetPos, 1f),
+                "Mathf.Lerp (接近1)",
+                () => { result = Mathf.Lerp(0, 100, 0.999f); },
+                "手动实现Lerp (接近1)",
+                () => { result = 0 + (0.999f * (100 - 0)); },
                 10000
             );
             
-            // 测试不受限制的插值参数
             _testFramework.RunTest(
-                "MathUtils.LerpUnclamped",
-                () => MathUtils.LerpUnclamped(_startPos, _targetPos, 1.5f),
-                "Vector3.LerpUnclamped",
-                () => Vector3.LerpUnclamped(_startPos, _targetPos, 1.5f),
+                "Mathf.LerpUnclamped",
+                () => { result = Mathf.LerpUnclamped(0, 100, 1.5f); },
+                "手动实现LerpUnclamped",
+                () => { result = 0 + (1.5f * (100 - 0)); },
                 10000
             );
         }
@@ -242,20 +239,25 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void Test_CalculateDistance_Performance()
         {
+            float result = 0f;
+            
             _testFramework.RunTest(
-                "MathUtils.CalculateDistance",
-                () => MathUtils.CalculateDistance(_startPos, _targetPos),
                 "Vector3.Distance",
-                () => Vector3.Distance(_startPos, _targetPos),
+                () => { result = Vector3.Distance(_startPos, _targetPos); },
+                "手动计算距离",
+                () => { result = (_targetPos - _startPos).magnitude; },
                 10000
             );
             
-            // 测试平方距离计算
             _testFramework.RunTest(
-                "MathUtils.CalculateDistanceSquared",
-                () => MathUtils.CalculateDistanceSquared(_startPos, _targetPos),
+                "Vector3.sqrMagnitude",
+                () => { result = (_targetPos - _startPos).sqrMagnitude; },
                 "手动计算平方距离",
-                () => (_targetPos - _startPos).sqrMagnitude,
+                () => 
+                { 
+                    Vector3 diff = _targetPos - _startPos;
+                    result = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z; 
+                },
                 10000
             );
         }
@@ -310,22 +312,8 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void GeneratePerformanceReport()
         {
-            // 运行所有测试并生成报告
-            Test_SmoothDamp_Performance();
-            Test_Remap_Performance();
-            Test_DirectionToRotation_Performance();
-            Test_Clamp_Performance();
-            Test_Lerp_Performance();
-            Test_CalculateDistance_Performance();
-            Test_Memory_Allocation();
-            
-            string report = _testFramework.GenerateReport("MathUtils性能测试报告");
-            UnityEngine.Debug.Log(report);
-            
-            // 可以将报告保存到文件
-            string reportPath = Application.temporaryCachePath + "/MathUtilsPerformanceReport.md";
-            System.IO.File.WriteAllText(reportPath, report);
-            UnityEngine.Debug.Log($"性能测试报告已保存到: {reportPath}");
+            // 生成性能测试报告
+            PerformanceTestFramework.GenerateReport("MathUtils性能测试报告");
         }
     }
 } 

@@ -15,6 +15,45 @@ namespace TByd.Core.Utils
     /// </remarks>
     public static class CollectionUtils
     {
+        #region 集合检测与判断
+        
+        /// <summary>
+        /// 检查集合是否为null或为空
+        /// </summary>
+        /// <typeparam name="T">集合元素类型</typeparam>
+        /// <param name="collection">要检查的集合</param>
+        /// <returns>如果集合为null或为空，则返回true；否则返回false</returns>
+        /// <remarks>
+        /// 性能优化：
+        /// - 对不同类型的集合进行特殊处理，避免不必要的枚举
+        /// - 针对常见集合类型进行优化
+        /// </remarks>
+        public static bool IsNullOrEmpty<T>(IEnumerable<T> collection)
+        {
+            if (collection == null)
+                return true;
+                
+            // 优化：针对ICollection<T>类型
+            if (collection is ICollection<T> c)
+                return c.Count == 0;
+                
+            // 优化：针对数组
+            if (collection is T[] array)
+                return array.Length == 0;
+                
+            // 优化：针对字典
+            if (collection is System.Collections.IDictionary dict)
+                return dict.Count == 0;
+                
+            // 对于其他集合类型，使用枚举器
+            using (var enumerator = collection.GetEnumerator())
+            {
+                return !enumerator.MoveNext();
+            }
+        }
+        
+        #endregion
+
         #region 批量处理
 
         /// <summary>
@@ -944,6 +983,110 @@ namespace TByd.Core.Utils
             return resultSelector(accumulate);
         }
 
+        #endregion
+
+        #region 集合随机访问
+        
+        /// <summary>
+        /// 从集合中随机获取一个元素
+        /// </summary>
+        /// <typeparam name="T">集合元素类型</typeparam>
+        /// <param name="source">源集合</param>
+        /// <returns>随机选择的元素</returns>
+        /// <exception cref="ArgumentNullException">source为null时抛出</exception>
+        /// <exception cref="ArgumentException">source为空集合时抛出</exception>
+        /// <remarks>
+        /// 性能优化：
+        /// - 针对IList类型进行优化，直接通过索引访问
+        /// - 对于其他集合类型，会先复制到列表再随机访问
+        /// </remarks>
+        public static T GetRandomElement<T>(IEnumerable<T> source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            
+            // 针对IList优化，避免集合复制
+            if (source is IList<T> list)
+            {
+                if (list.Count == 0)
+                    throw new ArgumentException("集合不能为空", nameof(source));
+                    
+                return list[UnityEngine.Random.Range(0, list.Count)];
+            }
+            
+            // 对于其他类型，转换为列表
+            var collection = source as ICollection<T>;
+            if (collection != null)
+            {
+                if (collection.Count == 0)
+                    throw new ArgumentException("集合不能为空", nameof(source));
+                
+                var tempList = new List<T>(collection);
+                return tempList[UnityEngine.Random.Range(0, tempList.Count)];
+            }
+            
+            // 对于无法预先知道大小的集合
+            var result = new List<T>();
+            foreach (var item in source)
+            {
+                result.Add(item);
+                if (result.Count > 1000) // 安全限制，防止无限集合
+                    break;
+            }
+            
+            if (result.Count == 0)
+                throw new ArgumentException("集合不能为空", nameof(source));
+                
+            return result[UnityEngine.Random.Range(0, result.Count)];
+        }
+        
+        #endregion
+
+        #region 集合安全访问
+        
+        /// <summary>
+        /// 安全地获取字典中指定键的值，如果键不存在则返回默认值
+        /// </summary>
+        /// <typeparam name="TKey">字典键类型</typeparam>
+        /// <typeparam name="TValue">字典值类型</typeparam>
+        /// <param name="dictionary">源字典</param>
+        /// <param name="key">要获取值的键</param>
+        /// <param name="defaultValue">键不存在时返回的默认值</param>
+        /// <returns>字典中指定键的值，或默认值</returns>
+        /// <exception cref="ArgumentNullException">dictionary为null时抛出</exception>
+        public static TValue GetOrDefault<TKey, TValue>(IDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default)
+        {
+            if (dictionary == null) throw new ArgumentNullException(nameof(dictionary));
+            
+            return dictionary.TryGetValue(key, out var value) ? value : defaultValue;
+        }
+        
+        /// <summary>
+        /// 检查集合中是否包含指定元素
+        /// </summary>
+        /// <typeparam name="T">集合元素类型</typeparam>
+        /// <param name="source">源集合</param>
+        /// <param name="item">要检查的元素</param>
+        /// <returns>如果集合包含指定元素，则返回true；否则返回false</returns>
+        /// <exception cref="ArgumentNullException">source为null时抛出</exception>
+        public static bool Contains<T>(IEnumerable<T> source, T item)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            
+            // 针对ICollection<T>优化
+            if (source is ICollection<T> collection)
+                return collection.Contains(item);
+                
+            // 对于其他类型，使用EqualityComparer
+            var comparer = EqualityComparer<T>.Default;
+            foreach (var element in source)
+            {
+                if (comparer.Equals(element, item))
+                    return true;
+            }
+            
+            return false;
+        }
+        
         #endregion
     }
 }

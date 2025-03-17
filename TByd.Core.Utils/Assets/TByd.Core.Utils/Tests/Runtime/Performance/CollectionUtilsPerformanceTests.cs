@@ -65,27 +65,28 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void Test_IsNullOrEmpty_Performance()
         {
+            bool result = false;
             _testFramework.RunTest(
                 "CollectionUtils.IsNullOrEmpty (List)",
-                () => CollectionUtils.IsNullOrEmpty(_smallList),
+                () => { result = CollectionUtils.IsNullOrEmpty(_smallList); },
                 "手动检查IsNullOrEmpty (List)",
-                () => _smallList == null || _smallList.Count == 0,
+                () => { result = _smallList == null || _smallList.Count == 0; },
                 10000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.IsNullOrEmpty (Array)",
-                () => CollectionUtils.IsNullOrEmpty(_array),
+                () => { result = CollectionUtils.IsNullOrEmpty(_array); },
                 "手动检查IsNullOrEmpty (Array)",
-                () => _array == null || _array.Length == 0,
+                () => { result = _array == null || _array.Length == 0; },
                 10000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.IsNullOrEmpty (Dictionary)",
-                () => CollectionUtils.IsNullOrEmpty(_dictionary),
+                () => { result = CollectionUtils.IsNullOrEmpty(_dictionary); },
                 "手动检查IsNullOrEmpty (Dictionary)",
-                () => _dictionary == null || _dictionary.Count == 0,
+                () => { result = _dictionary == null || _dictionary.Count == 0; },
                 10000
             );
             
@@ -93,9 +94,9 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             List<int> emptyList = new List<int>();
             _testFramework.RunTest(
                 "CollectionUtils.IsNullOrEmpty (空List)",
-                () => CollectionUtils.IsNullOrEmpty(emptyList),
+                () => { result = CollectionUtils.IsNullOrEmpty(emptyList); },
                 "手动检查IsNullOrEmpty (空List)",
-                () => emptyList == null || emptyList.Count == 0,
+                () => { result = emptyList == null || emptyList.Count == 0; },
                 10000
             );
             
@@ -103,9 +104,9 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             List<int> nullList = null;
             _testFramework.RunTest(
                 "CollectionUtils.IsNullOrEmpty (null List)",
-                () => CollectionUtils.IsNullOrEmpty(nullList),
+                () => { result = CollectionUtils.IsNullOrEmpty(nullList); },
                 "手动检查IsNullOrEmpty (null List)",
-                () => nullList == null || nullList.Count == 0,
+                () => { result = nullList == null || nullList.Count == 0; },
                 10000
             );
         }
@@ -113,38 +114,39 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void Test_GetRandomElement_Performance()
         {
+            int randomElement = 0;
             _testFramework.RunTest(
                 "CollectionUtils.GetRandomElement (小型List)",
-                () => CollectionUtils.GetRandomElement(_smallList),
+                () => { randomElement = CollectionUtils.GetRandomElement(_smallList); },
                 "手动获取随机元素 (小型List)",
                 () => 
                 {
                     int randomIndex = UnityEngine.Random.Range(0, _smallList.Count);
-                    return _smallList[randomIndex];
+                    randomElement = _smallList[randomIndex];
                 },
                 10000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.GetRandomElement (中型List)",
-                () => CollectionUtils.GetRandomElement(_mediumList),
+                () => { randomElement = CollectionUtils.GetRandomElement(_mediumList); },
                 "手动获取随机元素 (中型List)",
                 () => 
                 {
                     int randomIndex = UnityEngine.Random.Range(0, _mediumList.Count);
-                    return _mediumList[randomIndex];
+                    randomElement = _mediumList[randomIndex];
                 },
                 10000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.GetRandomElement (Array)",
-                () => CollectionUtils.GetRandomElement(_array),
+                () => { randomElement = CollectionUtils.GetRandomElement(_array); },
                 "手动获取随机元素 (Array)",
                 () => 
                 {
                     int randomIndex = UnityEngine.Random.Range(0, _array.Length);
-                    return _array[randomIndex];
+                    randomElement = _array[randomIndex];
                 },
                 10000
             );
@@ -155,12 +157,13 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         {
             // 创建测试列表的副本，避免修改原始列表
             List<int> testList = new List<int>(_smallList);
+            List<int> tempList = null;
             
             _testFramework.RunTest(
                 "CollectionUtils.Shuffle (小型List)",
                 () => CollectionUtils.Shuffle(testList),
                 "LINQ Shuffle (小型List)",
-                () => testList = testList.OrderBy(x => UnityEngine.Random.value).ToList(),
+                () => { tempList = testList.OrderBy(x => UnityEngine.Random.value).ToList(); },
                 100
             );
             
@@ -171,7 +174,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                 "CollectionUtils.Shuffle (中型List)",
                 () => CollectionUtils.Shuffle(mediumTestList),
                 "LINQ Shuffle (中型List)",
-                () => mediumTestList = mediumTestList.OrderBy(x => UnityEngine.Random.value).ToList(),
+                () => { tempList = mediumTestList.OrderBy(x => UnityEngine.Random.value).ToList(); },
                 20
             );
             
@@ -182,7 +185,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                 "CollectionUtils.Shuffle (大型List)",
                 () => CollectionUtils.Shuffle(largeTestList),
                 "LINQ Shuffle (大型List)",
-                () => largeTestList = largeTestList.OrderBy(x => UnityEngine.Random.value).ToList(),
+                () => { tempList = largeTestList.OrderBy(x => UnityEngine.Random.value).ToList(); },
                 5
             );
         }
@@ -190,27 +193,29 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void Test_FindAll_Performance()
         {
+            List<int> result = null;
+            
             _testFramework.RunTest(
                 "CollectionUtils.FindAll (小型List)",
-                () => CollectionUtils.FindAll(_smallList, x => x > 500),
+                () => { result = CollectionUtils.FindAll(_smallList, x => x > 500); },
                 "List.FindAll (小型List)",
-                () => _smallList.FindAll(x => x > 500),
+                () => { result = _smallList.FindAll(x => x > 500); },
                 1000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.FindAll (中型List)",
-                () => CollectionUtils.FindAll(_mediumList, x => x > 5000),
+                () => { result = CollectionUtils.FindAll(_mediumList, x => x > 5000); },
                 "List.FindAll (中型List)",
-                () => _mediumList.FindAll(x => x > 5000),
+                () => { result = _mediumList.FindAll(x => x > 5000); },
                 100
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.FindAll (大型List)",
-                () => CollectionUtils.FindAll(_largeList, x => x > 50000),
+                () => { result = CollectionUtils.FindAll(_largeList, x => x > 50000); },
                 "List.FindAll (大型List)",
-                () => _largeList.FindAll(x => x > 50000),
+                () => { result = _largeList.FindAll(x => x > 50000); },
                 10
             );
         }
@@ -276,36 +281,37 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         public void Test_Contains_Performance()
         {
             int searchValue = _mediumList[500]; // 选择中间的元素
+            bool result = false;
             
             _testFramework.RunTest(
                 "CollectionUtils.Contains (小型List)",
-                () => CollectionUtils.Contains(_smallList, searchValue),
+                () => { result = CollectionUtils.Contains(_smallList, searchValue); },
                 "List.Contains (小型List)",
-                () => _smallList.Contains(searchValue),
+                () => { result = _smallList.Contains(searchValue); },
                 1000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.Contains (中型List)",
-                () => CollectionUtils.Contains(_mediumList, searchValue),
+                () => { result = CollectionUtils.Contains(_mediumList, searchValue); },
                 "List.Contains (中型List)",
-                () => _mediumList.Contains(searchValue),
+                () => { result = _mediumList.Contains(searchValue); },
                 1000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.Contains (大型List)",
-                () => CollectionUtils.Contains(_largeList, searchValue),
+                () => { result = CollectionUtils.Contains(_largeList, searchValue); },
                 "List.Contains (大型List)",
-                () => _largeList.Contains(searchValue),
+                () => { result = _largeList.Contains(searchValue); },
                 100
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.Contains (Array)",
-                () => CollectionUtils.Contains(_array, searchValue),
+                () => { result = CollectionUtils.Contains(_array, searchValue); },
                 "Array.Contains (Array)",
-                () => Array.IndexOf(_array, searchValue) >= 0,
+                () => { result = Array.IndexOf(_array, searchValue) >= 0; },
                 1000
             );
         }
@@ -315,29 +321,32 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         {
             string existingKey = "key500";
             string nonExistingKey = "nonExistingKey";
+            int value = 0;
             
             _testFramework.RunTest(
                 "CollectionUtils.GetOrDefault (存在的键)",
-                () => CollectionUtils.GetOrDefault(_dictionary, existingKey, -1),
+                () => { value = CollectionUtils.GetOrDefault(_dictionary, existingKey, -1); },
                 "Dictionary TryGetValue (存在的键)",
                 () => 
                 {
-                    if (_dictionary.TryGetValue(existingKey, out int value))
-                        return value;
-                    return -1;
+                    if (_dictionary.TryGetValue(existingKey, out int val))
+                        value = val;
+                    else
+                        value = -1;
                 },
                 10000
             );
             
             _testFramework.RunTest(
                 "CollectionUtils.GetOrDefault (不存在的键)",
-                () => CollectionUtils.GetOrDefault(_dictionary, nonExistingKey, -1),
+                () => { value = CollectionUtils.GetOrDefault(_dictionary, nonExistingKey, -1); },
                 "Dictionary TryGetValue (不存在的键)",
                 () => 
                 {
-                    if (_dictionary.TryGetValue(nonExistingKey, out int value))
-                        return value;
-                    return -1;
+                    if (_dictionary.TryGetValue(nonExistingKey, out int val))
+                        value = val;
+                    else
+                        value = -1;
                 },
                 10000
             );
@@ -391,23 +400,8 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         [Test]
         public void GeneratePerformanceReport()
         {
-            // 运行所有测试并生成报告
-            Test_IsNullOrEmpty_Performance();
-            Test_GetRandomElement_Performance();
-            Test_Shuffle_Performance();
-            Test_FindAll_Performance();
-            Test_ForEach_Performance();
-            Test_Contains_Performance();
-            Test_GetOrDefault_Performance();
-            Test_Memory_Allocation();
-            
-            string report = _testFramework.GenerateReport("CollectionUtils性能测试报告");
-            UnityEngine.Debug.Log(report);
-            
-            // 可以将报告保存到文件
-            string reportPath = Application.temporaryCachePath + "/CollectionUtilsPerformanceReport.md";
-            System.IO.File.WriteAllText(reportPath, report);
-            UnityEngine.Debug.Log($"性能测试报告已保存到: {reportPath}");
+            // 生成性能测试报告
+            PerformanceTestFramework.GenerateReport("CollectionUtils性能测试报告");
         }
     }
 } 

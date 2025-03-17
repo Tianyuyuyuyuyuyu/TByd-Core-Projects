@@ -129,6 +129,70 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
         }
         
         /// <summary>
+        /// 运行对比测试，比较两个实现的性能差异
+        /// </summary>
+        /// <param name="testName">测试名称</param>
+        /// <param name="testAction">测试方法</param>
+        /// <param name="baselineTestName">基准测试名称</param>
+        /// <param name="baselineAction">基准测试方法</param>
+        /// <param name="iterations">迭代次数</param>
+        public void RunTest(
+            string testName,
+            Action testAction,
+            string baselineTestName,
+            Action baselineAction,
+            int iterations = 1000)
+        {
+            // 先运行基准测试
+            PerformanceTestFramework.RunPerformanceTest(
+                baselineTestName,
+                "性能对比",
+                baselineAction,
+                null,
+                iterations);
+                
+            // 再运行测试方法
+            PerformanceTestFramework.RunPerformanceTest(
+                testName,
+                "性能对比",
+                testAction,
+                baselineTestName,
+                iterations);
+        }
+        
+        /// <summary>
+        /// 运行内存分配测试，比较两个实现的内存分配差异
+        /// </summary>
+        /// <param name="testName">测试名称</param>
+        /// <param name="testAction">测试方法</param>
+        /// <param name="baselineTestName">基准测试名称</param>
+        /// <param name="baselineAction">基准测试方法</param>
+        /// <param name="iterations">迭代次数</param>
+        public void RunMemoryTest(
+            string testName,
+            Action testAction,
+            string baselineTestName,
+            Action baselineAction,
+            int iterations = 1000)
+        {
+            // 先运行基准测试
+            PerformanceTestFramework.RunPerformanceTest(
+                baselineTestName,
+                "内存分配对比",
+                baselineAction,
+                null,
+                iterations);
+                
+            // 再运行测试方法
+            PerformanceTestFramework.RunPerformanceTest(
+                testName,
+                "内存分配对比",
+                testAction,
+                baselineTestName,
+                iterations);
+        }
+        
+        /// <summary>
         /// 生成性能测试报告
         /// </summary>
         /// <param name="reportName">报告名称</param>

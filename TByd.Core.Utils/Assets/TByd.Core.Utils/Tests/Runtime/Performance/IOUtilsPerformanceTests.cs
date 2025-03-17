@@ -281,7 +281,8 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                     using (var stream = File.OpenRead(testLargeFilePath))
                     {
                         byte[] hash = md5.ComputeHash(stream);
-                        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                        string result = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                        return; // 不返回值，避免与Action委托不匹配
                     }
                 },
                 "IOUtils.CalculateMD5",
@@ -306,7 +307,8 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                     using (var stream = File.OpenRead(testLargeFilePath))
                     {
                         byte[] hash = sha1.ComputeHash(stream);
-                        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                        string result = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                        return; // 不返回值，避免与Action委托不匹配
                     }
                 },
                 "IOUtils.CalculateSHA1",
@@ -331,7 +333,8 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
                     using (var stream = File.OpenRead(testLargeFilePath))
                     {
                         byte[] hash = sha256.ComputeHash(stream);
-                        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                        string result = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+                        return; // 不返回值，避免与Action委托不匹配
                     }
                 },
                 "IOUtils.CalculateSHA256",

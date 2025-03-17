@@ -1,52 +1,13 @@
-CalculateMD5_CalculatesHashCorrectly (0.022s)
+Remap_HandlesInvertedRanges (0.002s)
 ---
-String lengths are both 32. Strings differ at index 1.
-  Expected: "67ecee5ef69d0ca4a5ead42fb0a7c22b"
-  But was:  "6078b080adfd945c4b2d2fade4749650"
-  ------------^
+Expected: 50.0f +/- 9.99999975E-05f
+  But was:  100.0f
 ---
-at TByd.Core.Utils.Tests.IOUtilsTests.CalculateMD5_CalculatesHashCorrectly () [0x00074] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\IOUtilsTests.cs:481
+at TByd.Core.Utils.Tests.Runtime.MathUtilsTests.Remap_HandlesInvertedRanges () [0x0002d] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\MathUtilsTests.cs:116
 
-CalculateMD5Async_CalculatesHashCorrectly (0.057s)
+Remap_HandlesZeroRangeInput (0.000s)
 ---
-String lengths are both 32. Strings differ at index 0.
-  Expected: "53c55446229b3398cf6d5f1034c286e0"
-  But was:  "fed299b245e7d06f1b8d31fd342b9a3a"
-  -----------^
+Expected: 5.0f +/- 9.99999975E-05f
+  But was:  0.0f
 ---
-at TByd.Core.Utils.Tests.IOUtilsTests+<CalculateMD5Async_CalculatesHashCorrectly>d__40.MoveNext () [0x0011f] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\IOUtilsTests.cs:613
-at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0004e] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Library\PackageCache\com.unity.test-framework@1.1.31\UnityEngine.TestRunner\NUnitExtensions\Attributes\TestEnumerator.cs:46
-
-CalculateSHA1_CalculatesHashCorrectly (0.010s)
----
-String lengths are both 40. Strings differ at index 0.
-  Expected: "e4dcd34199626f88a7501a6096c71ee1cd317e0f"
-  But was:  "6b7fdaca259bfea2f83090d3b0f4b982cf419158"
-  -----------^
----
-at TByd.Core.Utils.Tests.IOUtilsTests.CalculateSHA1_CalculatesHashCorrectly () [0x00074] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\IOUtilsTests.cs:504
-
-CalculateSHA256_CalculatesHashCorrectly (0.010s)
----
-String lengths are both 64. Strings differ at index 0.
-  Expected: "b8de29f31b2fbb31384ae98c028a0e8d112a54aff960780271cd7d407e044202"
-  But was:  "8901bb66cf7870b38e98d1dd739c264c2d431b08386e16cdfb912d6b7ffcd2d6"
-  -----------^
----
-at TByd.Core.Utils.Tests.IOUtilsTests.CalculateSHA256_CalculatesHashCorrectly () [0x00074] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\IOUtilsTests.cs:527
-
-GetDirectoryPath_ReturnsCorrectPath (0.005s)
----
-Expected string length 4 but was 0. Strings differ at index 0.
-  Expected: "path"
-  But was:  <string.Empty>
-  -----------^
----
-at TByd.Core.Utils.Tests.IOUtilsTests.GetDirectoryPath_ReturnsCorrectPath () [0x0002b] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\IOUtilsTests.cs:140
-
-GetFileSize_ReturnsCorrectSize (0.009s)
----
-Expected: 18
-  But was:  21
----
-at TByd.Core.Utils.Tests.IOUtilsTests.GetFileSize_ReturnsCorrectSize () [0x0002c] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\IOUtilsTests.cs:369
+at TByd.Core.Utils.Tests.Runtime.MathUtilsTests.Remap_HandlesZeroRangeInput () [0x00039] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\MathUtilsTests.cs:134

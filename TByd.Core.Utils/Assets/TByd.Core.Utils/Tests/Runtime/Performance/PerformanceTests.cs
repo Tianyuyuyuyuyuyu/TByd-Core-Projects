@@ -91,7 +91,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             sw.Start();
             for (int i = 0; i < IterationCount; i++)
             {
-                testString.Length > 10 ? testString.Substring(0, 10) : testString;
+                string result = testString.Length > 10 ? testString.Substring(0, 10) : testString;
             }
             sw.Stop();
             UnityEngine.Debug.Log($"string.Substring: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
@@ -128,7 +128,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             beforeMemory = GC.GetTotalMemory(true);
             for (int i = 0; i < IterationCount; i++)
             {
-                testString.Length > 10 ? testString.Substring(0, 10) : testString;
+                string result = testString.Length > 10 ? testString.Substring(0, 10) : testString;
             }
             afterMemory = GC.GetTotalMemory(true);
             UnityEngine.Debug.Log($"string.Substring memory allocation: {(afterMemory - beforeMemory) / 1024.0f}KB for {IterationCount} iterations");
@@ -304,7 +304,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             {
                 TimeUtils.FormatDateTime(now);
                 TimeUtils.GetRelativeTimeDescription(now.AddDays(-1));
-                TimeUtils.MeasureExecutionTime(() => { });
+                TimeUtils.MeasureExecutionTime("预热测试", () => { }, true);
             }
             
             // 测试FormatDateTime性能
@@ -342,7 +342,7 @@ namespace TByd.Core.Utils.Tests.Runtime.Performance
             sw.Start();
             for (int i = 0; i < IterationCount; i++)
             {
-                TimeUtils.MeasureExecutionTime(() => { });
+                TimeUtils.MeasureExecutionTime("测试", () => { }, false);
             }
             sw.Stop();
             UnityEngine.Debug.Log($"TimeUtils.MeasureExecutionTime: {sw.ElapsedMilliseconds}ms for {IterationCount} iterations");
