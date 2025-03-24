@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 
-namespace TByd.Core.Utils.Editor.Tests.Framework
+namespace TByd.Core.Utils.Tests.Editor.Framework
 {
     /// <summary>
     /// 测试基类，提供通用的测试设置和清理逻辑

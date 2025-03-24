@@ -1088,5 +1088,100 @@ namespace TByd.Core.Utils
         }
         
         #endregion
+
+        #region 集合合并与转换
+        
+        /// <summary>
+        /// 合并两个集合
+        /// </summary>
+        /// <typeparam name="T">集合元素类型</typeparam>
+        /// <param name="first">第一个集合</param>
+        /// <param name="second">第二个集合</param>
+        /// <returns>合并后的新集合</returns>
+        /// <exception cref="ArgumentNullException">first或second为null时抛出</exception>
+        /// <remarks>
+        /// 此方法创建一个新的集合，包含两个输入集合的所有元素。
+        /// 元素顺序保持不变，先是第一个集合的所有元素，然后是第二个集合的所有元素。
+        /// </remarks>
+        public static List<T> Join<T>(IEnumerable<T> first, IEnumerable<T> second)
+        {
+            if (first == null) throw new ArgumentNullException(nameof(first));
+            if (second == null) throw new ArgumentNullException(nameof(second));
+            
+            // 优化：如果可以确定大小，预分配空间
+            int capacity = 0;
+            if (first is ICollection<T> firstCollection)
+                capacity += firstCollection.Count;
+            if (second is ICollection<T> secondCollection)
+                capacity += secondCollection.Count;
+            
+            var result = capacity > 0 ? new List<T>(capacity) : new List<T>();
+            
+            // 添加第一个集合的元素
+            result.AddRange(first);
+            
+            // 添加第二个集合的元素
+            result.AddRange(second);
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// 将集合元素连接为字符串
+        /// </summary>
+        /// <typeparam name="T">集合元素类型</typeparam>
+        /// <param name="collection">要连接的集合</param>
+        /// <param name="delimiter">分隔符</param>
+        /// <returns>连接后的字符串</returns>
+        /// <exception cref="ArgumentNullException">collection为null时抛出</exception>
+        /// <remarks>
+        /// 此方法将集合中的所有元素转换为字符串并使用指定的分隔符连接。
+        /// 如果集合为空，则返回空字符串。
+        /// </remarks>
+        public static string JoinToString<T>(IEnumerable<T> collection, string delimiter)
+        {
+            if (collection == null) throw new ArgumentNullException(nameof(collection));
+            delimiter = delimiter ?? string.Empty;
+            
+            // 针对ICollection优化，预分配StringBuilder容量
+            if (collection is ICollection<T> c && c.Count == 0)
+                return string.Empty;
+                
+            return string.Join(delimiter, collection);
+        }
+        
+        /// <summary>
+        /// 创建集合的深度副本
+        /// </summary>
+        /// <typeparam name="T">集合元素类型</typeparam>
+        /// <param name="source">源集合</param>
+        /// <returns>集合的深度副本</returns>
+        /// <exception cref="ArgumentNullException">source为null时抛出</exception>
+        /// <remarks>
+        /// 此方法创建集合的深度副本，包括值类型和引用类型。
+        /// 对于引用类型，会尝试通过二进制序列化创建新实例。
+        /// 注意：要正确工作，引用类型必须标记为[Serializable]。
+        /// </remarks>
+        public static List<T> DeepCopy<T>(IEnumerable<T> source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            
+            // 对于基元类型和字符串，直接复制即可
+            if (typeof(T).IsPrimitive || typeof(T) == typeof(string))
+            {
+                return new List<T>(source);
+            }
+            
+            // 对于其他类型，使用二进制序列化进行深拷贝
+            var formatter = new System.Runtime.Serialization.Formatters.Binary.BinaryFormatter();
+            using (var stream = new System.IO.MemoryStream())
+            {
+                formatter.Serialize(stream, source.ToList());
+                stream.Position = 0;
+                return (List<T>)formatter.Deserialize(stream);
+            }
+        }
+        
+        #endregion
     }
 }

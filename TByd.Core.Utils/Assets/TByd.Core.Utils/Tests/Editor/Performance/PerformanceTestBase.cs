@@ -1,14 +1,10 @@
 using System;
-using System.Collections.Generic;
 using NUnit.Framework;
-using TByd.Core.Utils.Editor.Tests.Framework;
+using TByd.Core.Utils.Tests.Editor.Framework;
+using Unity.PerformanceTesting;
 using UnityEngine;
 
-#if UNITY_PERFORMANCE_TESTS
-using Unity.PerformanceTesting;
-#endif
-
-namespace TByd.Core.Utils.Editor.PerformanceTests
+namespace TByd.Core.Utils.Tests.Editor.Performance
 {
     /// <summary>
     /// 性能测试基类，提供性能测试基础设施
@@ -221,6 +217,41 @@ namespace TByd.Core.Utils.Editor.PerformanceTests
                 MeasureGC = measureGC,
                 IsBaseline = false
             });
+        }
+
+        /// <summary>
+        /// 测量指定操作的垃圾回收分配量（字节）
+        /// </summary>
+        /// <param name="action">要测量的操作</param>
+        /// <returns>分配的内存量（字节）</returns>
+        protected double MeasureGCAllocation(Action action)
+        {
+            // 使用MeasureGC测量内存分配
+            return MeasureGC.Allocation(action);
+        }
+
+        /// <summary>
+        /// 测量指定操作的平均垃圾回收分配量（字节）
+        /// </summary>
+        /// <param name="action">要测量的操作</param>
+        /// <param name="iterations">迭代次数</param>
+        /// <returns>平均分配的内存量（字节）</returns>
+        protected double MeasureAverageGCAllocation(Action action, int iterations = 1000)
+        {
+            // 使用MeasureGC测量平均内存分配
+            return MeasureGC.AverageAllocation(action, iterations);
+        }
+
+        /// <summary>
+        /// 断言指定操作的最大内存分配量
+        /// </summary>
+        /// <param name="action">要测量的操作</param>
+        /// <param name="maxBytes">最大允许分配的内存量（字节）</param>
+        /// <param name="message">断言失败时的消息</param>
+        protected void AssertMaxGCAllocation(Action action, double maxBytes, string message = null)
+        {
+            // 使用MeasureGC断言最大内存分配
+            MeasureGC.AssertMaxAllocation(action, (long)maxBytes, message);
         }
     }
 } 

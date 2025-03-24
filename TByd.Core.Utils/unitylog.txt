@@ -1,13 +1,12 @@
-Remap_HandlesInvertedRanges (0.002s)
----
-Expected: 50.0f +/- 9.99999975E-05f
-  But was:  100.0f
----
-at TByd.Core.Utils.Tests.Runtime.MathUtilsTests.Remap_HandlesInvertedRanges () [0x0002d] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\MathUtilsTests.cs:116
+Assets\TByd.Core.Utils\Tests\Editor\Unit\ReflectionUtilsTests.cs(338,45): error CS0308: The non-generic method 'ReflectionUtils.InvokeMethod(object, string, params object[])' cannot be used with type arguments
 
-Remap_HandlesZeroRangeInput (0.000s)
----
-Expected: 5.0f +/- 9.99999975E-05f
-  But was:  0.0f
----
-at TByd.Core.Utils.Tests.Runtime.MathUtilsTests.Remap_HandlesZeroRangeInput () [0x00039] in H:\TYPersonal\TByd-Core-Projects\TByd.Core.Utils\Assets\TByd.Core.Utils\Tests\Runtime\MathUtilsTests.cs:134
+Assets\TByd.Core.Utils\Tests\Editor\Performance\PerformanceTestBase.cs(254,51): error CS1503: Argument 2: cannot convert from 'double' to 'long'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(574,25): error CS0117: 'IOUtils' does not contain a definition for 'EnsureDirectoryExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(580,25): error CS0117: 'IOUtils' does not contain a definition for 'EnsureDirectoryExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\RandomUtilsPerformanceTests.cs(360,51): error CS1503: Argument 1: cannot convert from 'float' to 'int'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\RandomUtilsPerformanceTests.cs(360,59): error CS1503: Argument 2: cannot convert from 'float' to 'int'
+
