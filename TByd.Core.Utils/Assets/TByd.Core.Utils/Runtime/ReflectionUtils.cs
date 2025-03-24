@@ -324,6 +324,8 @@ namespace TByd.Core.Utils.Runtime
             SetterDelegateCache.Clear();
             MethodDelegateCache.Clear();
             ConstructorDelegateCache.Clear();
+            AttributeCache.Clear();
+            AttributesCache.Clear();
         }
         
         #endregion
@@ -528,29 +530,166 @@ namespace TByd.Core.Utils.Runtime
                 }
                 
                 // 使用表达式树创建无参构造函数调用
-                NewExpression newExp = Expression.New(type);
-                Expression<Func<object>> lambda = Expression.Lambda<Func<object>>(newExp);
-                var factory = lambda.Compile();
-                
-                ConstructorDelegateCache[cacheKey] = factory;
-                return factory();
+                try 
+                {
+                    NewExpression newExp = Expression.New(type);
+                    Expression<Func<object>> lambda = Expression.Lambda<Func<object>>(newExp);
+                    var factory = lambda.Compile();
+                    
+                    ConstructorDelegateCache[cacheKey] = factory;
+                    return factory();
+                }
+                catch (ArgumentException)
+                {
+                    // 类型可能没有无参构造函数或者是抽象类型，使用Activator作为后备
+                    return Activator.CreateInstance(type);
+                }
             }
             
             // 有参数构造函数
-            Type[] paramTypes = args.Select(arg => arg?.GetType() ?? typeof(object)).ToArray();
+            // 避免每次调用时创建新数组，减少GC分配
+            Type[] paramTypes = new Type[args.Length];
+            for (int i = 0; i < args.Length; i++)
+            {
+                paramTypes[i] = args[i]?.GetType() ?? typeof(object);
+            }
+            
+            string ctorCacheKey = GetConstructorKey(type, paramTypes);
+            
+            // 检查是否已缓存委托
+            if (ConstructorDelegateCache.TryGetValue(ctorCacheKey, out var cachedCtorDelegate))
+            {
+                try
+                {
+                    // 根据参数数量动态调用正确的委托类型
+                    switch (args.Length)
+                    {
+                        case 1:
+                            var func1 = (Func<object, object>)cachedCtorDelegate;
+                            return func1(args[0]);
+                        case 2:
+                            var func2 = (Func<object, object, object>)cachedCtorDelegate;
+                            return func2(args[0], args[1]);
+                        case 3:
+                            var func3 = (Func<object, object, object, object>)cachedCtorDelegate;
+                            return func3(args[0], args[1], args[2]);
+                        default:
+                            // 参数太多，回退到反射方式
+                            break;
+                    }
+                }
+                catch
+                {
+                    // 委托调用失败，回退到反射方式
+                }
+            }
+            
+            // 获取构造函数信息
             ConstructorInfo ctorInfo = GetConstructorInfo(type, paramTypes);
             
             if (ctorInfo == null)
             {
                 // 尝试查找兼容的构造函数
-                ctorInfo = type.GetConstructors()
-                    .FirstOrDefault(ctor => IsConstructorCompatible(ctor, args));
-                    
+                var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                foreach (var ctor in constructors)
+                {
+                    if (IsConstructorCompatible(ctor, args))
+                    {
+                        ctorInfo = ctor;
+                        break;
+                    }
+                }
+                
                 if (ctorInfo == null)
                     throw new ArgumentException($"未找到匹配的构造函数，类型: {type.FullName}");
             }
             
+            // 如果参数数量较少(1-3)，创建并缓存特定的委托
+            if (args.Length <= 3)
+            {
+                try
+                {
+                    Delegate ctorDelegate = CreateConstructorDelegate(ctorInfo, args.Length);
+                    if (ctorDelegate != null)
+                    {
+                        ConstructorDelegateCache[ctorCacheKey] = ctorDelegate;
+                        
+                        // 通过委托调用构造函数
+                        switch (args.Length)
+                        {
+                            case 1:
+                                var func1 = (Func<object, object>)ctorDelegate;
+                                return func1(args[0]);
+                            case 2:
+                                var func2 = (Func<object, object, object>)ctorDelegate;
+                                return func2(args[0], args[1]);
+                            case 3:
+                                var func3 = (Func<object, object, object, object>)ctorDelegate;
+                                return func3(args[0], args[1], args[2]);
+                        }
+                    }
+                }
+                catch
+                {
+                    // 创建委托失败，回退到反射方式
+                }
+            }
+            
+            // 回退到直接调用
             return ctorInfo.Invoke(args);
+        }
+        
+        // 创建构造函数委托
+        private static Delegate CreateConstructorDelegate(ConstructorInfo ctorInfo, int paramCount)
+        {
+            if (ctorInfo == null)
+                return null;
+                
+            ParameterInfo[] parameters = ctorInfo.GetParameters();
+            Type returnType = ctorInfo.DeclaringType;
+            
+            // 参数表达式列表
+            var paramExpressions = new ParameterExpression[paramCount];
+            for (int i = 0; i < paramCount; i++)
+            {
+                // 所有参数都使用object类型，在调用时进行转换
+                paramExpressions[i] = Expression.Parameter(typeof(object), $"arg{i}");
+            }
+            
+            // 转换后的参数列表，用于构造函数调用
+            var convertedArgs = new Expression[paramCount];
+            for (int i = 0; i < paramCount; i++)
+            {
+                Type paramType = parameters[i].ParameterType;
+                // 将object类型参数转换为构造函数参数类型
+                convertedArgs[i] = Expression.Convert(paramExpressions[i], paramType);
+            }
+            
+            // 创建构造函数调用表达式
+            NewExpression newExp = Expression.New(ctorInfo, convertedArgs);
+            // 确保返回类型为object
+            UnaryExpression convertResult = Expression.Convert(newExp, typeof(object));
+            
+            // 根据参数数量创建不同的委托类型
+            Type delegateType;
+            switch (paramCount)
+            {
+                case 1:
+                    delegateType = typeof(Func<object, object>);
+                    break;
+                case 2:
+                    delegateType = typeof(Func<object, object, object>);
+                    break;
+                case 3:
+                    delegateType = typeof(Func<object, object, object, object>);
+                    break;
+                default:
+                    return null; // 不支持的参数数量
+            }
+            
+            // 创建Lambda表达式并编译为委托
+            LambdaExpression lambda = Expression.Lambda(delegateType, convertResult, paramExpressions);
+            return lambda.Compile();
         }
         
         // 检查构造函数是否与参数兼容
@@ -571,16 +710,57 @@ namespace TByd.Core.Utils.Runtime
                 
                 if (arg == null)
                 {
+                    // 不能将null赋值给非可空值类型
                     if (paramType.IsValueType && !IsNullableType(paramType))
-                        return false; // 不能将null赋值给非可空值类型
+                        return false;
                 }
-                else if (!paramType.IsAssignableFrom(arg.GetType()) && !CanConvertValue(arg, paramType))
+                else
                 {
-                    return false; // 参数类型不兼容
+                    Type argType = arg.GetType();
+                    // 类型直接兼容
+                    if (paramType.IsAssignableFrom(argType))
+                        continue;
+                        
+                    // 检查数值类型之间的转换兼容性
+                    if (IsNumericType(paramType) && IsNumericType(argType))
+                        continue;
+                        
+                    // 检查其他转换兼容性
+                    if (!CanConvertValue(arg, paramType))
+                        return false;
                 }
             }
             
             return true;
+        }
+        
+        // 检查是否数值类型
+        private static bool IsNumericType(Type type)
+        {
+            if (type == null)
+                return false;
+                
+            // 处理可空类型
+            if (IsNullableType(type))
+                type = Nullable.GetUnderlyingType(type);
+                
+            switch (Type.GetTypeCode(type))
+            {
+                case TypeCode.Byte:
+                case TypeCode.SByte:
+                case TypeCode.Int16:
+                case TypeCode.UInt16:
+                case TypeCode.Int32:
+                case TypeCode.UInt32:
+                case TypeCode.Int64:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.Decimal:
+                    return true;
+                default:
+                    return false;
+            }
         }
         
         // 检查是否可空类型
@@ -648,13 +828,92 @@ namespace TByd.Core.Utils.Runtime
                 throw new ArgumentNullException(nameof(instance));
                 
             Type type = instance.GetType();
-            Type[] paramTypes = args?.Select(a => a?.GetType() ?? typeof(object)).ToArray() ?? Type.EmptyTypes;
             
+            // 避免使用LINQ创建数组，减少GC分配
+            Type[] paramTypes = null;
+            if (args != null && args.Length > 0)
+            {
+                paramTypes = new Type[args.Length];
+                for (int i = 0; i < args.Length; i++)
+                {
+                    paramTypes[i] = args[i]?.GetType() ?? typeof(object);
+                }
+            }
+            else
+            {
+                paramTypes = Type.EmptyTypes;
+            }
+            
+            // 方法调用缓存键
+            string methodCacheKey = GetMethodKey(type, methodName, paramTypes) + "_invoke";
+            
+            // 检查是否已缓存委托
+            if (MethodDelegateCache.TryGetValue(methodCacheKey, out var cachedDelegate))
+            {
+                try
+                {
+                    // 根据参数数量调用对应的委托
+                    switch (args?.Length ?? 0)
+                    {
+                        case 0:
+                            return ((Func<object, object>)cachedDelegate)(instance);
+                        case 1:
+                            return ((Func<object, object, object>)cachedDelegate)(instance, args[0]);
+                        case 2:
+                            return ((Func<object, object, object, object>)cachedDelegate)(instance, args[0], args[1]);
+                        case 3:
+                            return ((Func<object, object, object, object, object>)cachedDelegate)(instance, args[0], args[1], args[2]);
+                        default:
+                            // 参数过多，回退到反射
+                            break;
+                    }
+                }
+                catch
+                {
+                    // 委托调用失败，回退到反射
+                }
+            }
+            
+            // 获取方法信息
             MethodInfo methodInfo = GetMethodInfo(type, methodName, paramTypes);
             
             if (methodInfo == null)
                 throw new ArgumentException($"方法未找到: {methodName}", nameof(methodName));
-                
+            
+            // 如果是简单调用（参数少于4个），创建并缓存委托
+            if ((args?.Length ?? 0) <= 3)
+            {
+                try
+                {
+                    // 创建方法调用委托
+                    Delegate methodDelegate = CreateInstanceMethodDelegate(methodInfo, args?.Length ?? 0);
+                    
+                    if (methodDelegate != null)
+                    {
+                        // 缓存委托
+                        MethodDelegateCache[methodCacheKey] = methodDelegate;
+                        
+                        // 通过委托调用方法
+                        switch (args?.Length ?? 0)
+                        {
+                            case 0:
+                                return ((Func<object, object>)methodDelegate)(instance);
+                            case 1:
+                                return ((Func<object, object, object>)methodDelegate)(instance, args[0]);
+                            case 2:
+                                return ((Func<object, object, object, object>)methodDelegate)(instance, args[0], args[1]);
+                            case 3:
+                                return ((Func<object, object, object, object, object>)methodDelegate)(instance, args[0], args[1], args[2]);
+                        }
+                    }
+                }
+                catch
+                {
+                    // 创建委托失败，回退到反射
+                }
+            }
+            
+            // 回退到直接调用
             return methodInfo.Invoke(instance, args);
         }
         
@@ -669,21 +928,257 @@ namespace TByd.Core.Utils.Runtime
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
-                
-            Type[] paramTypes = args?.Select(a => a?.GetType() ?? typeof(object)).ToArray() ?? Type.EmptyTypes;
             
+            // 避免使用LINQ创建数组，减少GC分配
+            Type[] paramTypes = null;
+            if (args != null && args.Length > 0)
+            {
+                paramTypes = new Type[args.Length];
+                for (int i = 0; i < args.Length; i++)
+                {
+                    paramTypes[i] = args[i]?.GetType() ?? typeof(object);
+                }
+            }
+            else
+            {
+                paramTypes = Type.EmptyTypes;
+            }
+            
+            // 方法调用缓存键
+            string methodCacheKey = GetMethodKey(type, methodName, paramTypes) + "_static_invoke";
+            
+            // 检查是否已缓存委托
+            if (MethodDelegateCache.TryGetValue(methodCacheKey, out var cachedDelegate))
+            {
+                try
+                {
+                    // 根据参数数量调用对应的委托
+                    switch (args?.Length ?? 0)
+                    {
+                        case 0:
+                            return ((Func<object>)cachedDelegate)();
+                        case 1:
+                            return ((Func<object, object>)cachedDelegate)(args[0]);
+                        case 2:
+                            return ((Func<object, object, object>)cachedDelegate)(args[0], args[1]);
+                        case 3:
+                            return ((Func<object, object, object, object>)cachedDelegate)(args[0], args[1], args[2]);
+                        default:
+                            // 参数过多，回退到反射
+                            break;
+                    }
+                }
+                catch
+                {
+                    // 委托调用失败，回退到反射
+                }
+            }
+            
+            // 获取方法信息
             MethodInfo methodInfo = GetMethodInfo(type, methodName, paramTypes, BindingFlags.Public | BindingFlags.Static);
             
             if (methodInfo == null)
                 throw new ArgumentException($"静态方法未找到: {methodName}", nameof(methodName));
-                
+            
+            // 如果是简单调用（参数少于4个），创建并缓存委托
+            if ((args?.Length ?? 0) <= 3)
+            {
+                try
+                {
+                    // 创建静态方法调用委托
+                    Delegate methodDelegate = CreateStaticMethodDelegate(methodInfo, args?.Length ?? 0);
+                    
+                    if (methodDelegate != null)
+                    {
+                        // 缓存委托
+                        MethodDelegateCache[methodCacheKey] = methodDelegate;
+                        
+                        // 通过委托调用方法
+                        switch (args?.Length ?? 0)
+                        {
+                            case 0:
+                                return ((Func<object>)methodDelegate)();
+                            case 1:
+                                return ((Func<object, object>)methodDelegate)(args[0]);
+                            case 2:
+                                return ((Func<object, object, object>)methodDelegate)(args[0], args[1]);
+                            case 3:
+                                return ((Func<object, object, object, object>)methodDelegate)(args[0], args[1], args[2]);
+                        }
+                    }
+                }
+                catch
+                {
+                    // 创建委托失败，回退到反射
+                }
+            }
+            
+            // 回退到直接调用
             return methodInfo.Invoke(null, args);
+        }
+        
+        // 创建实例方法调用委托
+        private static Delegate CreateInstanceMethodDelegate(MethodInfo methodInfo, int paramCount)
+        {
+            if (methodInfo == null)
+                return null;
+            
+            Type instanceType = methodInfo.DeclaringType;
+            Type returnType = methodInfo.ReturnType;
+            ParameterInfo[] parameters = methodInfo.GetParameters();
+            
+            // 实例参数
+            var instanceParam = Expression.Parameter(typeof(object), "instance");
+            // 实例转换为正确类型
+            var convertedInstance = Expression.Convert(instanceParam, instanceType);
+            
+            // 方法参数
+            var paramExpressions = new ParameterExpression[paramCount];
+            var convertedArgs = new Expression[paramCount];
+            
+            for (int i = 0; i < paramCount; i++)
+            {
+                // 所有参数都使用object类型
+                paramExpressions[i] = Expression.Parameter(typeof(object), $"arg{i}");
+                
+                // 将参数转换为方法参数类型
+                Type paramType = parameters[i].ParameterType;
+                convertedArgs[i] = Expression.Convert(paramExpressions[i], paramType);
+            }
+            
+            // 创建方法调用表达式
+            MethodCallExpression callExp = Expression.Call(convertedInstance, methodInfo, convertedArgs);
+            
+            // 处理返回值
+            Expression returnExp;
+            if (returnType == typeof(void))
+            {
+                // void方法返回null
+                returnExp = Expression.Block(callExp, Expression.Constant(null, typeof(object)));
+            }
+            else
+            {
+                // 将返回值转换为object
+                returnExp = Expression.Convert(callExp, typeof(object));
+            }
+            
+            // 创建委托类型
+            Type delegateType;
+            
+            // 根据参数数量选择对应的委托类型
+            switch (paramCount)
+            {
+                case 0:
+                    delegateType = typeof(Func<object, object>);
+                    break;
+                case 1:
+                    delegateType = typeof(Func<object, object, object>);
+                    break;
+                case 2:
+                    delegateType = typeof(Func<object, object, object, object>);
+                    break;
+                case 3:
+                    delegateType = typeof(Func<object, object, object, object, object>);
+                    break;
+                default:
+                    return null; // 不支持的参数数量
+            }
+            
+            // 创建并编译表达式树
+            var allParams = new ParameterExpression[paramCount + 1];
+            allParams[0] = instanceParam;
+            Array.Copy(paramExpressions, 0, allParams, 1, paramCount);
+            
+            LambdaExpression lambda = Expression.Lambda(delegateType, returnExp, allParams);
+            return lambda.Compile();
+        }
+        
+        // 创建静态方法调用委托
+        private static Delegate CreateStaticMethodDelegate(MethodInfo methodInfo, int paramCount)
+        {
+            if (methodInfo == null)
+                return null;
+            
+            Type returnType = methodInfo.ReturnType;
+            ParameterInfo[] parameters = methodInfo.GetParameters();
+            
+            // 方法参数
+            var paramExpressions = new ParameterExpression[paramCount];
+            var convertedArgs = new Expression[paramCount];
+            
+            for (int i = 0; i < paramCount; i++)
+            {
+                // 所有参数都使用object类型
+                paramExpressions[i] = Expression.Parameter(typeof(object), $"arg{i}");
+                
+                // 将参数转换为方法参数类型
+                Type paramType = parameters[i].ParameterType;
+                convertedArgs[i] = Expression.Convert(paramExpressions[i], paramType);
+            }
+            
+            // 创建方法调用表达式
+            MethodCallExpression callExp = Expression.Call(methodInfo, convertedArgs);
+            
+            // 处理返回值
+            Expression returnExp;
+            if (returnType == typeof(void))
+            {
+                // void方法返回null
+                returnExp = Expression.Block(callExp, Expression.Constant(null, typeof(object)));
+            }
+            else
+            {
+                // 将返回值转换为object
+                returnExp = Expression.Convert(callExp, typeof(object));
+            }
+            
+            // 创建委托类型
+            Type delegateType;
+            
+            // 根据参数数量选择对应的委托类型
+            switch (paramCount)
+            {
+                case 0:
+                    delegateType = typeof(Func<object>);
+                    break;
+                case 1:
+                    delegateType = typeof(Func<object, object>);
+                    break;
+                case 2:
+                    delegateType = typeof(Func<object, object, object>);
+                    break;
+                case 3:
+                    delegateType = typeof(Func<object, object, object, object>);
+                    break;
+                default:
+                    return null; // 不支持的参数数量
+            }
+            
+            // 创建并编译表达式树
+            LambdaExpression lambda = Expression.Lambda(delegateType, returnExp, paramExpressions);
+            return lambda.Compile();
         }
         
         #endregion
         
         #region 特性处理
         
+        // 特性缓存
+        private static readonly Dictionary<string, Attribute> AttributeCache = new Dictionary<string, Attribute>();
+        private static readonly Dictionary<string, Attribute[]> AttributesCache = new Dictionary<string, Attribute[]>();
+
+        // 获取特性缓存键
+        private static string GetAttributeCacheKey(MemberInfo memberInfo, Type attributeType, bool inherit)
+        {
+            return $"{memberInfo.DeclaringType?.FullName ?? "global"}.{memberInfo.Name}_{attributeType.FullName}_{inherit}";
+        }
+
+        // 获取多特性缓存键
+        private static string GetAttributesCacheKey(MemberInfo memberInfo, Type attributeType, bool inherit)
+        {
+            return $"{memberInfo.DeclaringType?.FullName ?? "global"}.{memberInfo.Name}_{attributeType.FullName}_{inherit}_multiple";
+        }
+
         /// <summary>
         /// 获取指定类型上的特性
         /// </summary>
@@ -696,7 +1191,22 @@ namespace TByd.Core.Utils.Runtime
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
                 
-            return (TAttribute)type.GetCustomAttributes(typeof(TAttribute), inherit).FirstOrDefault();
+            // 检查缓存
+            string cacheKey = GetAttributeCacheKey(type, typeof(TAttribute), inherit);
+            
+            if (AttributeCache.TryGetValue(cacheKey, out Attribute cachedAttribute))
+            {
+                return (TAttribute)cachedAttribute;
+            }
+            
+            // 直接获取特性，避免LINQ
+            var attributes = type.GetCustomAttributes(typeof(TAttribute), inherit);
+            TAttribute attribute = attributes.Length > 0 ? (TAttribute)attributes[0] : null;
+            
+            // 缓存结果，即使为null
+            AttributeCache[cacheKey] = attribute;
+            
+            return attribute;
         }
         
         /// <summary>
@@ -711,7 +1221,22 @@ namespace TByd.Core.Utils.Runtime
             if (memberInfo == null)
                 throw new ArgumentNullException(nameof(memberInfo));
                 
-            return (TAttribute)memberInfo.GetCustomAttributes(typeof(TAttribute), inherit).FirstOrDefault();
+            // 检查缓存
+            string cacheKey = GetAttributeCacheKey(memberInfo, typeof(TAttribute), inherit);
+            
+            if (AttributeCache.TryGetValue(cacheKey, out Attribute cachedAttribute))
+            {
+                return (TAttribute)cachedAttribute;
+            }
+            
+            // 直接获取特性，避免LINQ
+            var attributes = memberInfo.GetCustomAttributes(typeof(TAttribute), inherit);
+            TAttribute attribute = attributes.Length > 0 ? (TAttribute)attributes[0] : null;
+            
+            // 缓存结果，即使为null
+            AttributeCache[cacheKey] = attribute;
+            
+            return attribute;
         }
         
         /// <summary>
@@ -721,12 +1246,32 @@ namespace TByd.Core.Utils.Runtime
         /// <param name="type">目标类型</param>
         /// <param name="inherit">是否包含继承的特性</param>
         /// <returns>特性实例集合</returns>
-        public static IEnumerable<TAttribute> GetAttributes<TAttribute>(Type type, bool inherit = false) where TAttribute : Attribute
+        public static TAttribute[] GetAttributes<TAttribute>(Type type, bool inherit = false) where TAttribute : Attribute
         {
             if (type == null)
                 throw new ArgumentNullException(nameof(type));
                 
-            return type.GetCustomAttributes(typeof(TAttribute), inherit).Cast<TAttribute>();
+            // 检查缓存
+            string cacheKey = GetAttributesCacheKey(type, typeof(TAttribute), inherit);
+            
+            if (AttributesCache.TryGetValue(cacheKey, out Attribute[] cachedAttributes))
+            {
+                return cachedAttributes as TAttribute[];
+            }
+            
+            // 使用自定义转换避免LINQ的Cast<T>()操作
+            var attributes = type.GetCustomAttributes(typeof(TAttribute), inherit);
+            TAttribute[] typedAttributes = new TAttribute[attributes.Length];
+            
+            for (int i = 0; i < attributes.Length; i++)
+            {
+                typedAttributes[i] = (TAttribute)attributes[i];
+            }
+            
+            // 缓存结果
+            AttributesCache[cacheKey] = typedAttributes;
+            
+            return typedAttributes;
         }
         
         /// <summary>
@@ -736,12 +1281,66 @@ namespace TByd.Core.Utils.Runtime
         /// <param name="memberInfo">成员信息</param>
         /// <param name="inherit">是否包含继承的特性</param>
         /// <returns>特性实例集合</returns>
-        public static IEnumerable<TAttribute> GetAttributes<TAttribute>(MemberInfo memberInfo, bool inherit = false) where TAttribute : Attribute
+        public static TAttribute[] GetAttributes<TAttribute>(MemberInfo memberInfo, bool inherit = false) where TAttribute : Attribute
         {
             if (memberInfo == null)
                 throw new ArgumentNullException(nameof(memberInfo));
                 
-            return memberInfo.GetCustomAttributes(typeof(TAttribute), inherit).Cast<TAttribute>();
+            // 检查缓存
+            string cacheKey = GetAttributesCacheKey(memberInfo, typeof(TAttribute), inherit);
+            
+            if (AttributesCache.TryGetValue(cacheKey, out Attribute[] cachedAttributes))
+            {
+                return cachedAttributes as TAttribute[];
+            }
+            
+            // 使用自定义转换避免LINQ的Cast<T>()操作
+            var attributes = memberInfo.GetCustomAttributes(typeof(TAttribute), inherit);
+            TAttribute[] typedAttributes = new TAttribute[attributes.Length];
+            
+            for (int i = 0; i < attributes.Length; i++)
+            {
+                typedAttributes[i] = (TAttribute)attributes[i];
+            }
+            
+            // 缓存结果
+            AttributesCache[cacheKey] = typedAttributes;
+            
+            return typedAttributes;
+        }
+        
+        /// <summary>
+        /// 获取多种类型的特性
+        /// </summary>
+        /// <param name="memberInfo">成员信息</param>
+        /// <param name="inherit">是否包含继承的特性</param>
+        /// <returns>特性数组</returns>
+        public static Attribute[] GetAttributes(MemberInfo memberInfo, bool inherit = false)
+        {
+            if (memberInfo == null)
+                throw new ArgumentNullException(nameof(memberInfo));
+            
+            // 缓存键
+            string cacheKey = $"{memberInfo.DeclaringType?.FullName ?? "global"}.{memberInfo.Name}_all_{inherit}";
+            
+            if (AttributesCache.TryGetValue(cacheKey, out Attribute[] cachedAttributes))
+            {
+                return cachedAttributes;
+            }
+            
+            var attributes = memberInfo.GetCustomAttributes(inherit);
+            var attributeArray = new Attribute[attributes.Length];
+            
+            // 转换为Attribute[]
+            for (int i = 0; i < attributes.Length; i++)
+            {
+                attributeArray[i] = (Attribute)attributes[i];
+            }
+            
+            // 缓存结果
+            AttributesCache[cacheKey] = attributeArray;
+            
+            return attributeArray;
         }
         
         /// <summary>
@@ -753,10 +1352,7 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>如果具有特性则返回true，否则返回false</returns>
         public static bool HasAttribute<TAttribute>(Type type, bool inherit = false) where TAttribute : Attribute
         {
-            if (type == null)
-                throw new ArgumentNullException(nameof(type));
-                
-            return type.GetCustomAttributes(typeof(TAttribute), inherit).Any();
+            return GetAttribute<TAttribute>(type, inherit) != null;
         }
         
         /// <summary>
@@ -768,10 +1364,16 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>如果具有特性则返回true，否则返回false</returns>
         public static bool HasAttribute<TAttribute>(MemberInfo memberInfo, bool inherit = false) where TAttribute : Attribute
         {
-            if (memberInfo == null)
-                throw new ArgumentNullException(nameof(memberInfo));
-                
-            return memberInfo.GetCustomAttributes(typeof(TAttribute), inherit).Any();
+            return GetAttribute<TAttribute>(memberInfo, inherit) != null;
+        }
+        
+        /// <summary>
+        /// 清除特性缓存
+        /// </summary>
+        public static void ClearAttributeCache()
+        {
+            AttributeCache.Clear();
+            AttributesCache.Clear();
         }
         
         #endregion
