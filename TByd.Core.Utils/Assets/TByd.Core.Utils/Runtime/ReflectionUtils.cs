@@ -494,6 +494,111 @@ namespace TByd.Core.Utils.Runtime
         
         #endregion
         
+        #region 高性能实例创建
+
+        /// <summary>
+        /// 高性能实例创建器，使用IL动态生成实例创建代码
+        /// </summary>
+        private static class FastActivator<T>
+        {
+            // 无参构造函数委托缓存
+            private static readonly Func<T> CreateInstanceDelegate;
+            
+            static FastActivator()
+            {
+                try
+                {
+                    // 使用表达式树创建无参构造函数调用
+                    var type = typeof(T);
+                    NewExpression newExp = Expression.New(type);
+                    Expression<Func<T>> lambda = Expression.Lambda<Func<T>>(newExp);
+                    CreateInstanceDelegate = lambda.Compile();
+                }
+                catch
+                {
+                    // 如果表达式树创建失败，使用反射作为后备方案
+                    CreateInstanceDelegate = () => (T)Activator.CreateInstance(typeof(T));
+                }
+            }
+            
+            /// <summary>
+            /// 快速创建类型实例
+            /// </summary>
+            /// <returns>新创建的类型实例</returns>
+            public static T CreateInstance()
+            {
+                return CreateInstanceDelegate();
+            }
+        }
+
+        /// <summary>
+        /// 提供参数类型转换的辅助方法
+        /// </summary>
+        private static class ParameterConverter
+        {
+            // 通用数值类型转换
+            public static object ConvertNumericParameter(object value, Type targetType)
+            {
+                if (value == null)
+                    return null;
+                    
+                Type valueType = value.GetType();
+                
+                // 如果目标类型是可空类型，获取其基础类型
+                if (IsNullableType(targetType))
+                    targetType = Nullable.GetUnderlyingType(targetType);
+                    
+                // 已经是目标类型，直接返回
+                if (targetType.IsAssignableFrom(valueType))
+                    return value;
+                    
+                // 使用Convert进行数值类型转换
+                if (IsNumericType(targetType) && IsNumericType(valueType))
+                {
+                    return Convert.ChangeType(value, targetType);
+                }
+                
+                // 特殊类型的处理
+                if (targetType == typeof(string))
+                    return value.ToString();
+                    
+                if (targetType == typeof(Guid) && valueType == typeof(string))
+                    return new Guid((string)value);
+                    
+                if (targetType == typeof(DateTime) && valueType == typeof(string))
+                    return DateTime.Parse((string)value);
+                    
+                // 尝试通过TypeConverter进行转换
+                try
+                {
+                    var converter = System.ComponentModel.TypeDescriptor.GetConverter(targetType);
+                    if (converter.CanConvertFrom(valueType))
+                        return converter.ConvertFrom(value);
+                        
+                    converter = System.ComponentModel.TypeDescriptor.GetConverter(valueType);
+                    if (converter.CanConvertTo(targetType))
+                        return converter.ConvertTo(value, targetType);
+                }
+                catch
+                {
+                    // 转换失败，尝试下一种方法
+                }
+                
+                // 尝试一般的转换
+                try
+                {
+                    return Convert.ChangeType(value, targetType);
+                }
+                catch
+                {
+                    // 无法转换，返回原值
+                    return value;
+                }
+            }
+        }
+
+        #endregion
+        
         #region 实例创建与方法调用
         
         /// <summary>
@@ -504,6 +609,13 @@ namespace TByd.Core.Utils.Runtime
         /// <returns>新创建的实例</returns>
         public static T CreateInstance<T>(params object[] args)
         {
+            // 无参数构造函数使用FastActivator优化
+            if (args == null || args.Length == 0)
+            {
+                return FastActivator<T>.CreateInstance();
+            }
+            
+            // 有参数构造函数使用通用CreateInstance
             return (T)CreateInstance(typeof(T), args);
         }
         
@@ -573,6 +685,9 @@ namespace TByd.Core.Utils.Runtime
                         case 3:
                             var func3 = (Func<object, object, object, object>)cachedCtorDelegate;
                             return func3(args[0], args[1], args[2]);
+                        case 4:
+                            var func4 = (Func<object, object, object, object, object>)cachedCtorDelegate;
+                            return func4(args[0], args[1], args[2], args[3]);
                         default:
                             // 参数太多，回退到反射方式
                             break;
@@ -587,25 +702,83 @@ namespace TByd.Core.Utils.Runtime
             // 获取构造函数信息
             ConstructorInfo ctorInfo = GetConstructorInfo(type, paramTypes);
             
+            // 如果未找到精确匹配的构造函数，尝试查找兼容的构造函数
             if (ctorInfo == null)
             {
                 // 尝试查找兼容的构造函数
                 var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-                foreach (var ctor in constructors)
+                
+                if (constructors.Length == 0)
                 {
-                    if (IsConstructorCompatible(ctor, args))
+                    // 没有找到任何构造函数，尝试使用Activator
+                    try
                     {
-                        ctorInfo = ctor;
-                        break;
+                        return Activator.CreateInstance(type, args);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new ArgumentException($"无法创建类型实例: {type.FullName}, 错误: {ex.Message}", ex);
                     }
                 }
                 
+                // 查找参数数量匹配的构造函数
+                List<ConstructorInfo> candidateCtors = new List<ConstructorInfo>();
+                foreach (var ctor in constructors)
+                {
+                    if (ctor.GetParameters().Length == args.Length)
+                    {
+                        candidateCtors.Add(ctor);
+                    }
+                }
+                
+                // 如果找到多个候选构造函数，尝试找到最匹配的一个
+                if (candidateCtors.Count > 0)
+                {
+                    foreach (var ctor in candidateCtors)
+                    {
+                        if (IsConstructorCompatible(ctor, args))
+                        {
+                            ctorInfo = ctor;
+                            break;
+                        }
+                    }
+                }
+                
+                // 仍然没有找到匹配的构造函数
                 if (ctorInfo == null)
+                {
                     throw new ArgumentException($"未找到匹配的构造函数，类型: {type.FullName}");
+                }
             }
             
-            // 如果参数数量较少(1-3)，创建并缓存特定的委托
-            if (args.Length <= 3)
+            // 预处理参数，尝试类型转换
+            ParameterInfo[] parameters = ctorInfo.GetParameters();
+            object[] convertedArgs = new object[args.Length];
+            
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i] == null)
+                {
+                    convertedArgs[i] = null;
+                    continue;
+                }
+                
+                Type paramType = parameters[i].ParameterType;
+                Type argType = args[i].GetType();
+                
+                // 如果类型已经兼容，直接使用
+                if (paramType.IsAssignableFrom(argType))
+                {
+                    convertedArgs[i] = args[i];
+                    continue;
+                }
+                
+                // 尝试转换参数类型
+                convertedArgs[i] = ParameterConverter.ConvertNumericParameter(args[i], paramType);
+            }
+            
+            // 如果参数数量较少(1-4)，创建并缓存特定的委托
+            if (args.Length <= 4)
             {
                 try
                 {
@@ -619,13 +792,16 @@ namespace TByd.Core.Utils.Runtime
                         {
                             case 1:
                                 var func1 = (Func<object, object>)ctorDelegate;
-                                return func1(args[0]);
+                                return func1(convertedArgs[0]);
                             case 2:
                                 var func2 = (Func<object, object, object>)ctorDelegate;
-                                return func2(args[0], args[1]);
+                                return func2(convertedArgs[0], convertedArgs[1]);
                             case 3:
                                 var func3 = (Func<object, object, object, object>)ctorDelegate;
-                                return func3(args[0], args[1], args[2]);
+                                return func3(convertedArgs[0], convertedArgs[1], convertedArgs[2]);
+                            case 4:
+                                var func4 = (Func<object, object, object, object, object>)ctorDelegate;
+                                return func4(convertedArgs[0], convertedArgs[1], convertedArgs[2], convertedArgs[3]);
                         }
                     }
                 }
@@ -635,8 +811,8 @@ namespace TByd.Core.Utils.Runtime
                 }
             }
             
-            // 回退到直接调用
-            return ctorInfo.Invoke(args);
+            // 回退到直接调用，但使用转换后的参数
+            return ctorInfo.Invoke(convertedArgs);
         }
         
         // 创建构造函数委托
@@ -661,8 +837,25 @@ namespace TByd.Core.Utils.Runtime
             for (int i = 0; i < paramCount; i++)
             {
                 Type paramType = parameters[i].ParameterType;
-                // 将object类型参数转换为构造函数参数类型
-                convertedArgs[i] = Expression.Convert(paramExpressions[i], paramType);
+                // 创建转换表达式，包括处理可空类型
+                if (IsNullableType(paramType))
+                {
+                    Type underlyingType = Nullable.GetUnderlyingType(paramType);
+                    var nullCheck = Expression.Equal(paramExpressions[i], Expression.Constant(null));
+                    var convertedValue = Expression.Convert(paramExpressions[i], underlyingType);
+                    var nullableNew = Expression.New(
+                        paramType.GetConstructor(new[] { underlyingType }),
+                        convertedValue);
+                    convertedArgs[i] = Expression.Condition(
+                        nullCheck,
+                        Expression.Constant(null, paramType),
+                        nullableNew);
+                }
+                else
+                {
+                    // 普通类型直接转换
+                    convertedArgs[i] = Expression.Convert(paramExpressions[i], paramType);
+                }
             }
             
             // 创建构造函数调用表达式
@@ -682,6 +875,9 @@ namespace TByd.Core.Utils.Runtime
                     break;
                 case 3:
                     delegateType = typeof(Func<object, object, object, object>);
+                    break;
+                case 4:
+                    delegateType = typeof(Func<object, object, object, object, object>);
                     break;
                 default:
                     return null; // 不支持的参数数量
@@ -863,8 +1059,10 @@ namespace TByd.Core.Utils.Runtime
                             return ((Func<object, object, object, object>)cachedDelegate)(instance, args[0], args[1]);
                         case 3:
                             return ((Func<object, object, object, object, object>)cachedDelegate)(instance, args[0], args[1], args[2]);
+                        case 4:
+                            return ((Func<object, object, object, object, object, object>)cachedDelegate)(instance, args[0], args[1], args[2], args[3]);
                         default:
-                            // 参数过多，回退到反射
+                            // 参数过多，使用DynamicMethod
                             break;
                     }
                 }
@@ -880,8 +1078,8 @@ namespace TByd.Core.Utils.Runtime
             if (methodInfo == null)
                 throw new ArgumentException($"方法未找到: {methodName}", nameof(methodName));
             
-            // 如果是简单调用（参数少于4个），创建并缓存委托
-            if ((args?.Length ?? 0) <= 3)
+            // 如果是简单调用（参数少于5个），创建并缓存委托
+            if ((args?.Length ?? 0) <= 4)
             {
                 try
                 {
@@ -904,12 +1102,26 @@ namespace TByd.Core.Utils.Runtime
                                 return ((Func<object, object, object, object>)methodDelegate)(instance, args[0], args[1]);
                             case 3:
                                 return ((Func<object, object, object, object, object>)methodDelegate)(instance, args[0], args[1], args[2]);
+                            case 4:
+                                return ((Func<object, object, object, object, object, object>)methodDelegate)(instance, args[0], args[1], args[2], args[3]);
                         }
                     }
                 }
                 catch
                 {
                     // 创建委托失败，回退到反射
+                }
+            }
+            else
+            {
+                // 多参数方法，使用DynamicMethod优化
+                try
+                {
+                    return DynamicMethodExecutor.Execute(methodInfo, instance, args);
+                }
+                catch
+                {
+                    // 如果DynamicMethod执行失败，回退到反射方式
                 }
             }
             
@@ -963,8 +1175,10 @@ namespace TByd.Core.Utils.Runtime
                             return ((Func<object, object, object>)cachedDelegate)(args[0], args[1]);
                         case 3:
                             return ((Func<object, object, object, object>)cachedDelegate)(args[0], args[1], args[2]);
+                        case 4:
+                            return ((Func<object, object, object, object, object>)cachedDelegate)(args[0], args[1], args[2], args[3]);
                         default:
-                            // 参数过多，回退到反射
+                            // 参数过多，使用DynamicMethod
                             break;
                     }
                 }
@@ -980,8 +1194,8 @@ namespace TByd.Core.Utils.Runtime
             if (methodInfo == null)
                 throw new ArgumentException($"静态方法未找到: {methodName}", nameof(methodName));
             
-            // 如果是简单调用（参数少于4个），创建并缓存委托
-            if ((args?.Length ?? 0) <= 3)
+            // 如果是简单调用（参数少于5个），创建并缓存委托
+            if ((args?.Length ?? 0) <= 4)
             {
                 try
                 {
@@ -1004,12 +1218,26 @@ namespace TByd.Core.Utils.Runtime
                                 return ((Func<object, object, object>)methodDelegate)(args[0], args[1]);
                             case 3:
                                 return ((Func<object, object, object, object>)methodDelegate)(args[0], args[1], args[2]);
+                            case 4:
+                                return ((Func<object, object, object, object, object>)methodDelegate)(args[0], args[1], args[2], args[3]);
                         }
                     }
                 }
                 catch
                 {
                     // 创建委托失败，回退到反射
+                }
+            }
+            else
+            {
+                // 多参数方法，使用DynamicMethod优化
+                try
+                {
+                    return DynamicMethodExecutor.Execute(methodInfo, null, args);
+                }
+                catch
+                {
+                    // 如果DynamicMethod执行失败，回退到反射方式
                 }
             }
             
@@ -1080,6 +1308,9 @@ namespace TByd.Core.Utils.Runtime
                 case 3:
                     delegateType = typeof(Func<object, object, object, object, object>);
                     break;
+                case 4:
+                    delegateType = typeof(Func<object, object, object, object, object, object>);
+                    break;
                 default:
                     return null; // 不支持的参数数量
             }
@@ -1149,6 +1380,9 @@ namespace TByd.Core.Utils.Runtime
                     break;
                 case 3:
                     delegateType = typeof(Func<object, object, object, object>);
+                    break;
+                case 4:
+                    delegateType = typeof(Func<object, object, object, object, object>);
                     break;
                 default:
                     return null; // 不支持的参数数量
@@ -1456,6 +1690,219 @@ namespace TByd.Core.Utils.Runtime
             throw new InvalidCastException($"无法将 {value?.GetType().FullName ?? "null"} 转换为 {typeof(T).FullName}");
         }
         
+        #endregion
+
+        #region 预热机制
+
+        /// <summary>
+        /// 预热反射工具类，减少首次调用的性能开销
+        /// </summary>
+        /// <remarks>
+        /// 建议在应用启动时调用此方法，以减少首次使用反射API时的延迟
+        /// </remarks>
+        public static void Warmup()
+        {
+            // 创建一个简单类型用于预热
+            var warmupType = typeof(List<object>);
+            var warmupInstance = new List<object>();
+            
+            try
+            {
+                // 预热类型查询
+                GetType(warmupType.FullName);
+                
+                // 预热成员查询（修复方法名）
+                warmupType.GetFields();  // 代替不存在的GetFieldNames
+                GetPropertyNames(warmupType);
+                GetMethodNames(warmupType);
+                
+                // 预热实例创建
+                CreateInstance<List<object>>();
+                CreateInstance<Dictionary<string, object>>(new object[] { 10 });
+                
+                // 预热字段和属性访问（修复方法名）
+                var countProp = GetPropertyInfo(warmupType, "Count");
+                var itemsProp = GetPropertyInfo(warmupType, "Item");
+                countProp?.GetValue(warmupInstance);  // 代替不存在的GetPropertyValue
+                var capacityProp = GetPropertyInfo(warmupType, "Capacity");
+                capacityProp?.SetValue(warmupInstance, 20);  // 代替不存在的SetPropertyValue
+                
+                // 预热方法调用
+                InvokeMethod(warmupInstance, "Add", new object[] { "WarmupItem" });
+                InvokeMethod(warmupInstance, "Clear", null);
+                InvokeStaticMethod(typeof(Math), "Max", new object[] { 1, 2 });
+                
+                // 预热特性处理
+                GetAttribute<SerializableAttribute>(typeof(List<>));
+                HasAttribute<ObsoleteAttribute>(typeof(List<>));
+                
+                // 预热委托创建
+                var method = warmupType.GetMethod("Contains");
+                CreateMethodDelegate<Func<List<object>, object, bool>>(warmupInstance, method);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"反射工具预热过程出现异常，这不会影响正常使用: {ex.Message}");
+            }
+            
+            // 指示已完成预热
+            Debug.Log("ReflectionUtils预热完成，首次调用性能将得到提升");
+        }
+
+        #endregion
+
+        #region 多参数方法调用优化
+
+        /// <summary>
+        /// 使用DynamicMethod进行高性能方法调用
+        /// </summary>
+        private static class DynamicMethodExecutor
+        {
+            // 缓存大于4个参数的动态方法调用器
+            private static readonly Dictionary<string, DynamicMethodDelegate> DynamicMethodCache = 
+                new Dictionary<string, DynamicMethodDelegate>();
+            
+            // 动态方法委托类型
+            public delegate object DynamicMethodDelegate(object target, object[] args);
+            
+            /// <summary>
+            /// 创建或获取动态方法调用委托
+            /// </summary>
+            /// <param name="methodInfo">方法信息</param>
+            /// <returns>动态方法委托</returns>
+            public static DynamicMethodDelegate CreateExecutor(MethodInfo methodInfo)
+            {
+                if (methodInfo == null)
+                    throw new ArgumentNullException(nameof(methodInfo));
+                    
+                string cacheKey = GetMethodCacheKey(methodInfo);
+                
+                if (DynamicMethodCache.TryGetValue(cacheKey, out var executor))
+                    return executor;
+                    
+                lock (DynamicMethodCache)
+                {
+                    if (DynamicMethodCache.TryGetValue(cacheKey, out executor))
+                        return executor;
+                        
+                    // 使用System.Reflection.Emit.DynamicMethod创建动态方法
+                    var dynamicMethod = new System.Reflection.Emit.DynamicMethod(
+                        $"Execute_{methodInfo.Name}",
+                        typeof(object),
+                        new[] { typeof(object), typeof(object[]) },
+                        typeof(DynamicMethodExecutor).Module,
+                        true);
+                        
+                    var il = dynamicMethod.GetILGenerator();
+                    var parameterInfos = methodInfo.GetParameters();
+                    var paramTypes = new Type[parameterInfos.Length];
+                    var locals = new System.Reflection.Emit.LocalBuilder[parameterInfos.Length];
+                    
+                    // 加载参数
+                    for (int i = 0; i < parameterInfos.Length; i++)
+                    {
+                        paramTypes[i] = parameterInfos[i].ParameterType;
+                        locals[i] = il.DeclareLocal(paramTypes[i]);
+                        
+                        il.Emit(System.Reflection.Emit.OpCodes.Ldarg_1); // 加载args数组
+                        il.Emit(System.Reflection.Emit.OpCodes.Ldc_I4, i); // 加载索引i
+                        il.Emit(System.Reflection.Emit.OpCodes.Ldelem_Ref); // 获取args[i]
+                        
+                        // 转换参数类型
+                        EmitCastToReference(il, paramTypes[i]);
+                        
+                        il.Emit(System.Reflection.Emit.OpCodes.Stloc, locals[i]); // 存储到局部变量
+                    }
+                    
+                    // 处理实例方法和静态方法
+                    if (!methodInfo.IsStatic)
+                    {
+                        il.Emit(System.Reflection.Emit.OpCodes.Ldarg_0); // 加载target实例
+                        EmitCastToReference(il, methodInfo.DeclaringType); // 转换类型
+                    }
+                    
+                    // 加载所有参数
+                    for (int i = 0; i < parameterInfos.Length; i++)
+                    {
+                        il.Emit(System.Reflection.Emit.OpCodes.Ldloc, locals[i]); // 加载局部变量
+                    }
+                    
+                    // 调用方法
+                    il.EmitCall(
+                        methodInfo.IsStatic ? System.Reflection.Emit.OpCodes.Call : System.Reflection.Emit.OpCodes.Callvirt,
+                        methodInfo,
+                        null);
+                        
+                    // 处理返回值
+                    if (methodInfo.ReturnType == typeof(void))
+                    {
+                        il.Emit(System.Reflection.Emit.OpCodes.Ldnull); // 返回null
+                    }
+                    else
+                    {
+                        // 如果返回类型是值类型，需要装箱
+                        if (methodInfo.ReturnType.IsValueType)
+                        {
+                            il.Emit(System.Reflection.Emit.OpCodes.Box, methodInfo.ReturnType);
+                        }
+                    }
+                    
+                    il.Emit(System.Reflection.Emit.OpCodes.Ret);
+                    
+                    executor = (DynamicMethodDelegate)dynamicMethod.CreateDelegate(typeof(DynamicMethodDelegate));
+                    DynamicMethodCache[cacheKey] = executor;
+                    
+                    return executor;
+                }
+            }
+            
+            // 生成IL代码，将堆栈上的对象转换为指定类型
+            private static void EmitCastToReference(System.Reflection.Emit.ILGenerator il, Type type)
+            {
+                if (type.IsValueType)
+                {
+                    il.Emit(System.Reflection.Emit.OpCodes.Unbox_Any, type);
+                }
+                else
+                {
+                    il.Emit(System.Reflection.Emit.OpCodes.Castclass, type);
+                }
+            }
+            
+            // 生成方法缓存键
+            private static string GetMethodCacheKey(MethodInfo methodInfo)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.Append(methodInfo.DeclaringType.FullName).Append('.');
+                sb.Append(methodInfo.Name);
+                
+                // 添加参数类型
+                sb.Append('(');
+                var parameters = methodInfo.GetParameters();
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    if (i > 0) sb.Append(',');
+                    sb.Append(parameters[i].ParameterType.FullName);
+                }
+                sb.Append(')');
+                
+                return sb.ToString();
+            }
+            
+            /// <summary>
+            /// 执行动态方法
+            /// </summary>
+            /// <param name="methodInfo">方法信息</param>
+            /// <param name="target">目标实例，静态方法为null</param>
+            /// <param name="args">方法参数</param>
+            /// <returns>方法返回值</returns>
+            public static object Execute(MethodInfo methodInfo, object target, params object[] args)
+            {
+                var executor = CreateExecutor(methodInfo);
+                return executor(target, args);
+            }
+        }
+
         #endregion
     }
 }
