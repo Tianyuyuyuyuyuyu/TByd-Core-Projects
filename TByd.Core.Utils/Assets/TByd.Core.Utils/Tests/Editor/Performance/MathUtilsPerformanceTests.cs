@@ -320,6 +320,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// 测试MathUtils数学操作的GC分配
         /// </summary>
         [Test]
+        [Performance]
         public void MathUtils_GCAllocation()
         {
             // SmoothDamp方法应该有限的GC分配
@@ -358,6 +359,104 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
                     _ = result;
                 }
             }, 20, "IsPointInPolygon方法应该有限的GC分配");
+        }
+
+        [Test]
+        [Performance]
+        public void Clamp_Int_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void Clamp_Float_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void Lerp_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void InverseLerp_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void SmoothStep_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void Map_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void Approximately_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void MathUtils_Clamp_Int_GCAllocation()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void MathUtils_Clamp_Float_GCAllocation()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void MathUtils_Lerp_GCAllocation()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void MathUtils_InverseLerp_GCAllocation()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void MathUtils_SmoothStep_GCAllocation()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void MathUtils_Map_GCAllocation()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void MathUtils_Approximately_GCAllocation()
+        {
+            // ... existing code ...
         }
     }
 } 

@@ -1,7 +1,10 @@
+using System;
+using System.Collections.Generic;
 using NUnit.Framework;
+using Unity.PerformanceTesting;
 using TByd.Core.Utils.Runtime;
 using TByd.Core.Utils.Tests.Editor.Framework;
-using Unity.PerformanceTesting;
+using Random = UnityEngine.Random;
 using UnityEngine;
 
 namespace TByd.Core.Utils.Tests.Editor.Performance
@@ -335,6 +338,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// 测试RandomUtils各方法的GC分配
         /// </summary>
         [Test]
+        [Performance]
         public void RandomUtils_GCAllocation()
         {
             // 测试RandomUtils.Range的内存分配（应该为0）

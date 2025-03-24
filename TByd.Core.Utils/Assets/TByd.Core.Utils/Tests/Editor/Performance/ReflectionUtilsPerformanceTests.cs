@@ -5,6 +5,7 @@ using System.Reflection;
 using NUnit.Framework;
 using TByd.Core.Utils.Runtime;
 using TByd.Core.Utils.Tests.Editor.Framework;
+using Unity.PerformanceTesting;
 
 namespace TByd.Core.Utils.Tests.Editor.Performance
 {
@@ -87,6 +88,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region GetField Performance Tests
         
         [Test]
+        [Performance]
         public void GetFieldInfo_Performance()
         {
             // 定义测试配置
@@ -138,6 +140,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void GetFieldInfo_CachedReflection_Performance()
         {
             // 定义测试配置
@@ -195,6 +198,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region SetField Performance Tests
         
         [Test]
+        [Performance]
         public void SetFieldValue_Performance()
         {
             // 定义测试配置
@@ -250,6 +254,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region GetProperty Performance Tests
         
         [Test]
+        [Performance]
         public void GetPropertyInfo_Performance()
         {
             // 定义测试配置
@@ -305,6 +310,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region SetProperty Performance Tests
         
         [Test]
+        [Performance]
         public void SetPropertyValue_Performance()
         {
             // 定义测试配置
@@ -360,6 +366,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region InvokeMethod Performance Tests
         
         [Test]
+        [Performance]
         public void InvokeMethod_Performance()
         {
             // 定义测试配置
@@ -410,6 +417,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void InvokeMethod_WithParameters_Performance()
         {
             // 定义测试配置
@@ -465,6 +473,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region GetAttribute Performance Tests
         
         [Test]
+        [Performance]
         public void GetAttribute_Performance()
         {
             // 定义测试配置
@@ -521,6 +530,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region CreateInstance Performance Tests
         
         [Test]
+        [Performance]
         public void CreateInstance_Performance()
         {
             // 定义测试配置
@@ -571,6 +581,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void CreateInstance_WithParameters_Performance()
         {
             // 定义测试配置
@@ -625,6 +636,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region GetTypes Performance Tests
         
         [Test]
+        [Performance]
         public void GetTypes_Performance()
         {
             // 定义测试配置
@@ -683,6 +695,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #region Memory Allocation Tests
         
         [Test]
+        [Performance]
         public void ReflectionUtils_GetFieldInfo_GCAllocation()
         {
             MeasureGC.AssertMaxAllocation(() => 
@@ -692,6 +705,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void ReflectionUtils_FieldSetValue_GCAllocation()
         {
             var fieldInfo = ReflectionUtils.GetFieldInfo(typeof(TestDerivedClass), "PublicField");
@@ -703,6 +717,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void ReflectionUtils_GetPropertyInfo_GCAllocation()
         {
             MeasureGC.AssertMaxAllocation(() => 
@@ -712,6 +727,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void ReflectionUtils_PropertySetValue_GCAllocation()
         {
             var propertyInfo = ReflectionUtils.GetPropertyInfo(typeof(TestDerivedClass), "PublicProperty");
@@ -723,6 +739,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void ReflectionUtils_InvokeMethod_GCAllocation()
         {
             MeasureGC.AssertMaxAllocation(() => 
@@ -732,6 +749,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void ReflectionUtils_InvokeMethod_WithParameters_GCAllocation()
         {
             object[] parameters = new object[] { "Hello", 123 };
@@ -743,6 +761,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void ReflectionUtils_GetAttribute_GCAllocation()
         {
             Type serializableType = typeof(TestSerializableClass);
@@ -754,6 +773,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void ReflectionUtils_CreateInstance_GCAllocation()
         {
             // 实例化必然会分配内存，所以我们只需要确保它不超过合理的量

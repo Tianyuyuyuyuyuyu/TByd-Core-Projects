@@ -706,9 +706,10 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         #endregion
 
         /// <summary>
-        /// 测试CollectionUtils方法的GC分配
+        /// 测试CollectionUtils所有相关方法的GC分配情况
         /// </summary>
         [Test]
+        [Performance]
         public void CollectionUtils_GCAllocation()
         {
             // IsNullOrEmpty

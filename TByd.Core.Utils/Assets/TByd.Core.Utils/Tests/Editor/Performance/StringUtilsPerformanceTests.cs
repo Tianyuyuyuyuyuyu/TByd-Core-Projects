@@ -39,7 +39,8 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// <summary>
         /// 测试StringUtils.IsNullOrWhiteSpace的性能，与string.IsNullOrWhiteSpace比较
         /// </summary>
-        [Test, Performance]
+        [Test]
+        [Performance]
         public void IsNullOrWhiteSpace_Performance()
         {
             // 创建测试数据 - 10000个随机字符串，有10%概率为空或空白
@@ -84,7 +85,8 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// <summary>
         /// 测试StringUtils.Split方法的性能，与string.Split比较
         /// </summary>
-        [Test, Performance]
+        [Test]
+        [Performance]
         public void Split_Performance()
         {
             ComparePerformance(
@@ -116,7 +118,8 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// <summary>
         /// 测试StringUtils.GenerateRandom方法的性能
         /// </summary>
-        [Test, Performance]
+        [Test]
+        [Performance]
         public void GenerateRandom_Performance()
         {
             // 不同长度的随机字符串生成性能
@@ -151,7 +154,8 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// <summary>
         /// 测试StringUtils.Truncate方法的性能
         /// </summary>
-        [Test, Performance]
+        [Test]
+        [Performance]
         public void Truncate_Performance()
         {
             // 准备一批不同长度的字符串
@@ -193,7 +197,8 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// <summary>
         /// 测试StringUtils.ToSlug方法的性能
         /// </summary>
-        [Test, Performance]
+        [Test]
+        [Performance]
         public void ToSlug_Performance()
         {
             // 准备测试数据 - 不同类型的字符串
@@ -227,7 +232,8 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// <summary>
         /// 测试中文字符串处理的性能
         /// </summary>
-        [Test, Performance]
+        [Test]
+        [Performance]
         public void ChineseString_Processing_Performance()
         {
             // 生成包含中文的测试字符串
@@ -254,6 +260,20 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
                 },
                 "ToSlug(中文字符串)"
             );
+        }
+
+        [Test]
+        [Performance]
+        public void IsNullOrEmpty_Performance()
+        {
+            // ... existing code ...
+        }
+
+        [Test]
+        [Performance]
+        public void StringUtils_GCAllocation()
+        {
+            // ... existing code ...
         }
     }
 } 

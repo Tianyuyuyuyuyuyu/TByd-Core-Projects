@@ -32,6 +32,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void FormatTimeSpan_CustomFormat_Performance()
         {
             // 定义测试配置
@@ -86,6 +87,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void FormatCompactTimeSpan_Performance()
         {
             // 定义测试配置
@@ -172,6 +174,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void DateTime_Conversion_Performance()
         {
             // 定义测试配置
@@ -248,6 +251,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         [Test]
+        [Performance]
         public void TimeZoneConversion_Performance()
         {
             DateTime utcNow = DateTime.UtcNow;
