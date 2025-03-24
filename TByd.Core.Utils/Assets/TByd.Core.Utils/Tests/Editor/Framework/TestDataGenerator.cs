@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using TByd.Core.Utils.Runtime;
 
 namespace TByd.Core.Utils.Tests.Editor.Framework
 {

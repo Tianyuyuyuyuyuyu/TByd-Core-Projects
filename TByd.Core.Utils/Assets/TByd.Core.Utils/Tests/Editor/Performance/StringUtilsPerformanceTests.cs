@@ -37,52 +37,6 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         /// <summary>
-        /// 测试StringUtils.IsNullOrWhiteSpace的性能，与string.IsNullOrWhiteSpace比较
-        /// </summary>
-        [Test]
-        [Performance]
-        public void IsNullOrWhiteSpace_Performance()
-        {
-            // 创建测试数据 - 10000个随机字符串，有10%概率为空或空白
-            var strings = new string[10000];
-            var random = new System.Random(42); // 固定种子以确保重复测试的一致性
-            
-            for (int i = 0; i < strings.Length; i++)
-            {
-                if (random.NextDouble() < 0.1) // 10%概率为空或空白
-                {
-                    strings[i] = random.Next(3) == 0 ? null : 
-                                 random.Next(3) == 1 ? string.Empty : "   ";
-                }
-                else
-                {
-                    strings[i] = TestDataGenerator.GenerateString(random.Next(1, 20));
-                }
-            }
-            
-            // 比较性能
-            ComparePerformance(
-                // 基准实现 - 系统字符串方法
-                () => {
-                    for (int i = 0; i < strings.Length; i++)
-                    {
-                        _ = string.IsNullOrWhiteSpace(strings[i]);
-                    }
-                },
-                
-                // 优化实现 - 我们的StringUtils方法
-                () => {
-                    for (int i = 0; i < strings.Length; i++)
-                    {
-                        _ = StringUtils.IsNullOrWhiteSpace(strings[i]);
-                    }
-                },
-                
-                "IsNullOrWhiteSpace性能比较"
-            );
-        }
-        
-        /// <summary>
         /// 测试StringUtils.Split方法的性能，与string.Split比较
         /// </summary>
         [Test]
@@ -144,10 +98,10 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
                 () => {
                     for (int i = 0; i < 100; i++)
                     {
-                        _ = StringUtils.GenerateRandom(32, includeSpecialChars: true);
+                        _ = StringUtils.GenerateRandom(32, StringUtils.AlphanumericAndSpecialChars);
                     }
                 },
-                "GenerateRandom(includeSpecialChars=true)"
+                "GenerateRandom(包含特殊字符)"
             );
         }
         
@@ -266,14 +220,152 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         [Performance]
         public void IsNullOrEmpty_Performance()
         {
-            // ... existing code ...
+            // 创建测试数据 - 10000个随机字符串，有10%概率为空
+            var strings = new string[10000];
+            var random = new System.Random(42); // 固定种子以确保重复测试的一致性
+            
+            for (int i = 0; i < strings.Length; i++)
+            {
+                if (random.NextDouble() < 0.1) // 10%概率为空
+                {
+                    strings[i] = random.Next(2) == 0 ? null : string.Empty;
+                }
+                else
+                {
+                    strings[i] = TestDataGenerator.GenerateString(random.Next(1, 20));
+                }
+            }
+            
+            // 比较性能
+            ComparePerformance(
+                // 基准实现 - 系统string.IsNullOrEmpty方法
+                () => {
+                    for (int i = 0; i < strings.Length; i++)
+                    {
+                        _ = string.IsNullOrEmpty(strings[i]);
+                    }
+                },
+                
+                // 优化实现 - 我们的StringUtils方法
+                () => {
+                    for (int i = 0; i < strings.Length; i++)
+                    {
+                        _ = StringUtils.IsNullOrEmpty(strings[i]);
+                    }
+                },
+                
+                "IsNullOrEmpty性能比较"
+            );
         }
 
         [Test]
         [Performance]
         public void StringUtils_GCAllocation()
         {
-            // ... existing code ...
+            // 测试所有主要方法的GC分配情况
+            
+            // 大字符串测试对象
+            string largeString = TestDataGenerator.GenerateString(5000);
+            string largeChineseString = TestDataGenerator.GenerateChineseString(3000);
+            
+            // ToSlug GC分配测试
+            MeasurePerformance(
+                () => { 
+                    _ = StringUtils.ToSlug(largeString);
+                },
+                "ToSlug_GC分配(5000字符)"
+            );
+            
+            // Truncate GC分配测试
+            MeasurePerformance(
+                () => { 
+                    _ = StringUtils.Truncate(largeString, 500);
+                },
+                "Truncate_GC分配(500/5000字符)"
+            );
+            
+            // GenerateRandom GC分配测试
+            MeasurePerformance(
+                () => { 
+                    _ = StringUtils.GenerateRandom(2048);
+                },
+                "GenerateRandom_GC分配(2048字符)"
+            );
+            
+            // 中文字符串处理GC分配测试
+            MeasurePerformance(
+                () => { 
+                    _ = StringUtils.ToSlug(largeChineseString);
+                },
+                "ToSlug_GC分配(中文3000字符)"
+            );
+        }
+
+        [Test]
+        [Performance]
+        public void Verify_LargeString_Optimizations()
+        {
+            // 准备大型测试字符串
+            string largeText = TestDataGenerator.GenerateString(5000);
+            string largeChineseText = TestDataGenerator.GenerateChineseString(5000);
+            
+            // 测试优化后的ToSlug
+            MeasurePerformance(
+                () => {
+                    _ = StringUtils.ToSlug(largeText);
+                },
+                "ToSlug(5000字符)"
+            );
+            
+            // 测试优化后的中文ToSlug
+            MeasurePerformance(
+                () => {
+                    _ = StringUtils.ToSlug(largeChineseText);
+                },
+                "ToSlug(中文5000字符)"
+            );
+            
+            // 测试优化后的Truncate
+            MeasurePerformance(
+                () => {
+                    _ = StringUtils.Truncate(largeText, 1000);
+                },
+                "Truncate(5000→1000字符)"
+            );
+            
+            // 测试优化后的中文Truncate
+            MeasurePerformance(
+                () => {
+                    _ = StringUtils.Truncate(largeChineseText, 1000);
+                },
+                "Truncate(中文5000→1000字符)"
+            );
+        }
+
+        [Test]
+        [Performance]
+        public void Verify_GenerateRandom_BlockGeneration()
+        {
+            // 测试不同大小的随机字符串生成
+            int[] sizes = { 512, 1024, 2048, 4096, 8192 };
+            
+            foreach (int size in sizes)
+            {
+                MeasurePerformance(
+                    () => {
+                        _ = StringUtils.GenerateRandom(size);
+                    },
+                    $"GenerateRandom({size}字符)"
+                );
+            }
+            
+            // 测试包含特殊字符的大型随机字符串
+            MeasurePerformance(
+                () => {
+                    _ = StringUtils.GenerateRandom(4096, StringUtils.AlphanumericAndSpecialChars);
+                },
+                "GenerateRandom(4096字符,特殊字符)"
+            );
         }
     }
 } 

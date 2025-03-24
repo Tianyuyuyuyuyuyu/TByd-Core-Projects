@@ -14,70 +14,6 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
     public class StringUtilsTests : TestBase
     {
         /// <summary>
-        /// 测试IsNullOrWhiteSpace方法
-        /// </summary>
-        [Test]
-        public void IsNullOrWhiteSpace_WithNullString_ReturnsTrue()
-        {
-            // 准备
-            string input = null;
-            
-            // 执行
-            bool result = StringUtils.IsNullOrWhiteSpace(input);
-            
-            // 验证
-            Assert.IsTrue(result);
-        }
-        
-        /// <summary>
-        /// 测试IsNullOrWhiteSpace方法
-        /// </summary>
-        [Test]
-        public void IsNullOrWhiteSpace_WithEmptyString_ReturnsTrue()
-        {
-            // 准备
-            string input = string.Empty;
-            
-            // 执行
-            bool result = StringUtils.IsNullOrWhiteSpace(input);
-            
-            // 验证
-            Assert.IsTrue(result);
-        }
-        
-        /// <summary>
-        /// 测试IsNullOrWhiteSpace方法
-        /// </summary>
-        [Test]
-        public void IsNullOrWhiteSpace_WithWhiteSpaceString_ReturnsTrue()
-        {
-            // 准备
-            string input = "   ";
-            
-            // 执行
-            bool result = StringUtils.IsNullOrWhiteSpace(input);
-            
-            // 验证
-            Assert.IsTrue(result);
-        }
-        
-        /// <summary>
-        /// 测试IsNullOrWhiteSpace方法
-        /// </summary>
-        [Test]
-        public void IsNullOrWhiteSpace_WithNonEmptyString_ReturnsFalse()
-        {
-            // 准备
-            string input = "Hello";
-            
-            // 执行
-            bool result = StringUtils.IsNullOrWhiteSpace(input);
-            
-            // 验证
-            Assert.IsFalse(result);
-        }
-        
-        /// <summary>
         /// 测试GenerateRandom方法
         /// </summary>
         [Test]
@@ -131,10 +67,10 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
         {
             // 准备
             int length = 100;
-            bool includeSpecialChars = true;
+            string allowedChars = StringUtils.AlphanumericAndSpecialChars;
             
             // 执行
-            string result = StringUtils.GenerateRandom(length, includeSpecialChars);
+            string result = StringUtils.GenerateRandom(length, allowedChars);
             
             // 验证 - 至少包含一个特殊字符
             Assert.IsTrue(ContainsAnySpecialChar(result));

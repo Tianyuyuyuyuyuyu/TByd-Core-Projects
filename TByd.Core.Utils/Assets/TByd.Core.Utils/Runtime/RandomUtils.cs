@@ -221,7 +221,12 @@ namespace TByd.Core.Utils.Runtime
             if (length < 0)
                 throw new ArgumentException("ID长度不能为负值", nameof(length));
                 
-            return StringUtils.GenerateRandom(length, includeSpecialChars);
+            // 根据includeSpecialChars参数选择合适的字符集
+            string allowedChars = includeSpecialChars
+                ? StringUtils.AlphanumericAndSpecialChars
+                : StringUtils.AlphanumericChars;
+                
+            return StringUtils.GenerateRandom(length, allowedChars);
         }
 
         /// <summary>
