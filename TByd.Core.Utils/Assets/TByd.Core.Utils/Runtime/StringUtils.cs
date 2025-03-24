@@ -99,7 +99,7 @@ namespace TByd.Core.Utils.Runtime
         /// <param name="length">随机字符串的长度</param>
         /// <param name="includeSpecialChars">是否包含特殊字符</param>
         /// <returns>生成的随机字符串</returns>
-        /// <exception cref="ArgumentOutOfRangeException">当length小于0时抛出</exception>
+        /// <exception cref="ArgumentException">当length小于0时抛出</exception>
         /// <remarks>
         /// 性能优化：
         /// - 使用ArrayPool减少内存分配
@@ -109,7 +109,7 @@ namespace TByd.Core.Utils.Runtime
         public static string GenerateRandom(int length, bool includeSpecialChars = false)
         {
             if (length < 0)
-                throw new ArgumentOutOfRangeException(nameof(length), "长度不能小于0");
+                throw new ArgumentException("长度不能小于0", nameof(length));
 
             if (length == 0)
                 return string.Empty;
@@ -214,18 +214,19 @@ namespace TByd.Core.Utils.Runtime
         /// 截断字符串到指定长度，添加省略号或自定义后缀
         /// </summary>
         /// <param name="value">要截断的字符串</param>
-        /// <param name="maxLength">最大长度</param>
+        /// <param name="maxLength">要保留的最大字符数</param>
         /// <param name="suffix">截断后添加的后缀，默认为"..."</param>
         /// <returns>截断后的字符串</returns>
         /// <exception cref="ArgumentNullException">当value为null时抛出</exception>
         /// <exception cref="ArgumentOutOfRangeException">当maxLength小于0时抛出</exception>
         /// <remarks>
-        /// 此方法确保结果字符串（包括后缀）不会超过指定的最大长度。
-        /// 如果原始字符串长度已经小于或等于最大长度，则返回原始字符串。
+        /// 此方法保留原始字符串的前maxLength个字符，然后添加后缀。
+        /// 如果原始字符串长度已经小于或等于maxLength，则返回原始字符串。
+        /// 中文字符和其他宽字符也被正确处理，按照字符数量（而非字节数）计算。
         /// 
         /// <para>边界情况处理：</para>
         /// <list type="bullet">
-        ///   <item>如果maxLength小于或等于suffix长度，返回截断的suffix</item>
+        ///   <item>如果maxLength为0，返回后缀</item>
         ///   <item>如果suffix为null，使用空字符串</item>
         /// </list>
         /// 
@@ -249,7 +250,7 @@ namespace TByd.Core.Utils.Runtime
         /// 
         /// // 处理极短的maxLength
         /// string tiny = StringUtils.Truncate(longText, 2, "...");
-        /// // 结果: ".."
+        /// // 结果: "这是..."
         /// </code>
         /// </remarks>
         public static string Truncate(string value, int maxLength, string suffix = "...")
@@ -266,16 +267,24 @@ namespace TByd.Core.Utils.Runtime
                 
             // 处理null后缀
             suffix ??= string.Empty;
-                
-            // 处理后缀长度大于等于最大长度的情况
-            if (maxLength <= suffix.Length)
-                return maxLength == 0 ? string.Empty : suffix.Substring(0, maxLength);
+            
+            // 处理maxLength为0的情况
+            if (maxLength == 0)
+                return suffix;
                 
             // 计算截断位置
-            int truncateLength = maxLength - suffix.Length;
+            int truncateLength = maxLength;
+            
+            // 确保不会在字符中间截断（处理代理对）
+            if (truncateLength > 0 && truncateLength < value.Length && 
+                char.IsHighSurrogate(value[truncateLength - 1]) && 
+                char.IsLowSurrogate(value[truncateLength]))
+            {
+                truncateLength--;
+            }
             
             // 使用StringBuilder减少内存分配
-            StringBuilder sb = new StringBuilder(maxLength);
+            StringBuilder sb = new StringBuilder(truncateLength + suffix.Length);
             sb.Append(value, 0, truncateLength);
             sb.Append(suffix);
             

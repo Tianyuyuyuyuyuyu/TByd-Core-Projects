@@ -994,7 +994,7 @@ namespace TByd.Core.Utils
         /// <param name="source">源集合</param>
         /// <returns>随机选择的元素</returns>
         /// <exception cref="ArgumentNullException">source为null时抛出</exception>
-        /// <exception cref="ArgumentException">source为空集合时抛出</exception>
+        /// <exception cref="InvalidOperationException">source为空集合时抛出</exception>
         /// <remarks>
         /// 性能优化：
         /// - 针对IList类型进行优化，直接通过索引访问
@@ -1008,7 +1008,7 @@ namespace TByd.Core.Utils
             if (source is IList<T> list)
             {
                 if (list.Count == 0)
-                    throw new ArgumentException("集合不能为空", nameof(source));
+                    throw new InvalidOperationException("集合不能为空");
                     
                 return list[UnityEngine.Random.Range(0, list.Count)];
             }
@@ -1018,7 +1018,7 @@ namespace TByd.Core.Utils
             if (collection != null)
             {
                 if (collection.Count == 0)
-                    throw new ArgumentException("集合不能为空", nameof(source));
+                    throw new InvalidOperationException("集合不能为空");
                 
                 var tempList = new List<T>(collection);
                 return tempList[UnityEngine.Random.Range(0, tempList.Count)];
@@ -1034,7 +1034,7 @@ namespace TByd.Core.Utils
             }
             
             if (result.Count == 0)
-                throw new ArgumentException("集合不能为空", nameof(source));
+                throw new InvalidOperationException("集合不能为空");
                 
             return result[UnityEngine.Random.Range(0, result.Count)];
         }

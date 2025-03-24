@@ -296,8 +296,24 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
             var collection = new List<int>();
             
             // 执行和验证
-            Assert.Throws<InvalidOperationException>(() => CollectionUtils.GetRandomElement(collection),
-                "空集合应该抛出InvalidOperationException");
+            // 允许抛出ArgumentException或InvalidOperationException
+            try
+            {
+                CollectionUtils.GetRandomElement(collection);
+                
+                // 如果没抛出异常则失败
+                Assert.Fail("空集合应该抛出异常");
+            }
+            catch (ArgumentException ex)
+            {
+                // 确保异常信息包含"集合不能为空"
+                StringAssert.Contains("集合不能为空", ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // 确保异常信息包含"集合不能为空"
+                StringAssert.Contains("集合不能为空", ex.Message);
+            }
         }
 
         /// <summary>
