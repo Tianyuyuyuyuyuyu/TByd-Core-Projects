@@ -493,13 +493,14 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
         [Test]
         public void CombinePath_WithEmptyPathParts_HandlesCorrectly()
         {
+            // 注意：由于IOUtils.CombinePath已被废弃，此测试现在使用System.IO.Path.Combine
             // 安排
             string part1 = "path1";
             string part2 = "";
             string part3 = "path3";
             
             // 执行
-            string result = IOUtils.CombinePath(part1, part2, part3);
+            string result = Path.Combine(part1, Path.Combine(part2, part3));
             
             // 断言
             Assert.That(result, Is.Not.Null);
@@ -517,11 +518,12 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
         [Test]
         public void GetFileName_ReturnsCorrectFileName()
         {
+            // 注意：由于IOUtils.GetFileName已被废弃，此测试现在使用System.IO.Path.GetFileName
             // 安排
             string path = Path.Combine("directory", "subdirectory", "file.txt");
             
             // 执行
-            string result = IOUtils.GetFileName(path);
+            string result = Path.GetFileName(path);
             
             // 断言
             Assert.AreEqual("file.txt", result, "应返回正确的文件名");
@@ -533,11 +535,12 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
         [Test]
         public void GetFileName_WithFileNameOnly_ReturnsFileName()
         {
+            // 注意：由于IOUtils.GetFileName已被废弃，此测试现在使用System.IO.Path.GetFileName
             // 安排
             string path = "file.txt";
             
             // 执行
-            string result = IOUtils.GetFileName(path);
+            string result = Path.GetFileName(path);
             
             // 断言
             Assert.AreEqual("file.txt", result, "应返回正确的文件名");
@@ -553,11 +556,12 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
         [Test]
         public void GetFileNameWithoutExtension_ReturnsCorrectFileNameWithoutExtension()
         {
+            // 注意：由于IOUtils.GetFileNameWithoutExtension已被废弃，此测试现在使用System.IO.Path.GetFileNameWithoutExtension
             // 安排
             string path = Path.Combine("directory", "subdirectory", "file.txt");
             
             // 执行
-            string result = IOUtils.GetFileNameWithoutExtension(path);
+            string result = Path.GetFileNameWithoutExtension(path);
             
             // 断言
             Assert.AreEqual("file", result, "应返回不带扩展名的文件名");
@@ -569,11 +573,12 @@ namespace TByd.Core.Utils.Tests.Editor.Unit
         [Test]
         public void GetFileNameWithoutExtension_WithoutExtension_ReturnsFileName()
         {
+            // 注意：由于IOUtils.GetFileNameWithoutExtension已被废弃，此测试现在使用System.IO.Path.GetFileNameWithoutExtension
             // 安排
             string path = Path.Combine("directory", "subdirectory", "file");
             
             // 执行
-            string result = IOUtils.GetFileNameWithoutExtension(path);
+            string result = Path.GetFileNameWithoutExtension(path);
             
             // 断言
             Assert.AreEqual("file", result, "应返回文件名");

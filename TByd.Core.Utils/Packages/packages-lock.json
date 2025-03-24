@@ -7,6 +7,13 @@
       "dependencies": {},
       "url": "https://package.openupm.com"
     },
+    "com.tbyd.tools.versioncontrol": {
+      "version": "0.0.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {},
+      "url": "https://upm.tianyuyuyu.com"
+    },
     "com.unity.collab-proxy": {
       "version": "1.17.1",
       "depth": 0,

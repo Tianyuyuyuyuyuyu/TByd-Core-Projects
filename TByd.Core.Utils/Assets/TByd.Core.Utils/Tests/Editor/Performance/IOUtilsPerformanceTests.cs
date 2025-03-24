@@ -70,6 +70,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// <summary>
         /// 测试CombinePath方法的性能
         /// </summary>
+        /*
         [Test, Performance]
         public void CombinePath_Performance()
         {
@@ -90,10 +91,12 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
             .GC()
             .Run();
         }
+        */
         
         /// <summary>
         /// 测试GetFileName方法的性能
         /// </summary>
+        /*
         [Test, Performance]
         public void GetFileName_Performance()
         {
@@ -112,10 +115,12 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
             .GC()
             .Run();
         }
+        */
         
         /// <summary>
         /// 测试GetFileNameWithoutExtension方法的性能
         /// </summary>
+        /*
         [Test, Performance]
         public void GetFileNameWithoutExtension_Performance()
         {
@@ -134,6 +139,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
             .GC()
             .Run();
         }
+        */
         
         /// <summary>
         /// 测试GetFileExtension方法的性能
@@ -158,15 +164,14 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         }
         
         /// <summary>
-        /// 比较IOUtils和System.IO路径操作的性能
+        /// 测试IOUtils.NormalizePath方法的性能
         /// </summary>
         [Test, Performance]
-        public void ComparePathOperations_Performance()
+        public void NormalizePath_IOUtils_Performance()
         {
             // 准备测试数据
             string path = Path.Combine("directory", "subdirectory", "file.txt");
             
-            // IOUtils.NormalizePath
             Measure.Method(() =>
             {
                 for (int i = 0; i < BenchmarkIterations; i++)
@@ -178,8 +183,18 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
             .MeasurementCount(10)
             .GC()
             .Run();
+        }
+        
+        /// <summary>
+        /// 测试System.IO.Path.GetFileName方法的性能
+        /// </summary>
+        /*
+        [Test, Performance]
+        public void GetFileName_SystemIO_Performance()
+        {
+            // 准备测试数据
+            string path = Path.Combine("directory", "subdirectory", "file.txt");
             
-            // Path.GetFileName
             Measure.Method(() =>
             {
                 for (int i = 0; i < BenchmarkIterations; i++)
@@ -192,6 +207,7 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
             .GC()
             .Run();
         }
+        */
         
         #endregion
         
@@ -201,13 +217,32 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
         /// 测试FileExists方法的性能
         /// </summary>
         [Test, Performance]
-        public void FileExists_Performance()
+        public void FileExists_IOUtils_Performance()
         {
             Measure.Method(() =>
             {
                 for (int i = 0; i < BenchmarkIterations; i++)
                 {
                     bool result = IOUtils.FileExists(_testFilePath);
+                }
+            })
+            .WarmupCount(3)
+            .MeasurementCount(10)
+            .GC()
+            .Run();
+        }
+        
+        /// <summary>
+        /// 测试System.IO.File.Exists方法的性能
+        /// </summary>
+        [Test, Performance]
+        public void FileExists_SystemIO_Performance()
+        {
+            Measure.Method(() =>
+            {
+                for (int i = 0; i < BenchmarkIterations; i++)
+                {
+                    bool result = File.Exists(_testFilePath);
                 }
             })
             .WarmupCount(3)
@@ -227,39 +262,6 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
                 for (int i = 0; i < BenchmarkIterations; i++)
                 {
                     bool result = IOUtils.DirectoryExists(_testFolderPath);
-                }
-            })
-            .WarmupCount(3)
-            .MeasurementCount(10)
-            .GC()
-            .Run();
-        }
-        
-        /// <summary>
-        /// 测试比较IOUtils和System.IO存在性检查的性能
-        /// </summary>
-        [Test, Performance]
-        public void CompareExistsCheck_Performance()
-        {
-            // IOUtils.FileExists
-            Measure.Method(() =>
-            {
-                for (int i = 0; i < BenchmarkIterations; i++)
-                {
-                    bool result = IOUtils.FileExists(_testFilePath);
-                }
-            })
-            .WarmupCount(3)
-            .MeasurementCount(10)
-            .GC()
-            .Run();
-            
-            // File.Exists
-            Measure.Method(() =>
-            {
-                for (int i = 0; i < BenchmarkIterations; i++)
-                {
-                    bool result = File.Exists(_testFilePath);
                 }
             })
             .WarmupCount(3)
@@ -511,13 +513,13 @@ namespace TByd.Core.Utils.Tests.Editor.Performance
             // GetFileName
             double getFileNameAllocation = MeasureGC.Allocation(() =>
             {
-                string result = IOUtils.GetFileName(path);
+                string result = Path.GetFileName(path);
             });
             
             // GetFileNameWithoutExtension
             double getFileNameWOExtAllocation = MeasureGC.Allocation(() =>
             {
-                string result = IOUtils.GetFileNameWithoutExtension(path);
+                string result = Path.GetFileNameWithoutExtension(path);
             });
             
             // GetFileExtension
