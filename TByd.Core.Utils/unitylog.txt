@@ -1,12 +1,58 @@
-Assets\TByd.Core.Utils\Tests\Editor\Unit\ReflectionUtilsTests.cs(338,45): error CS0308: The non-generic method 'ReflectionUtils.InvokeMethod(object, string, params object[])' cannot be used with type arguments
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(76,21): error CS0117: 'IOUtils' does not contain a definition for 'CreateDirectory'
 
-Assets\TByd.Core.Utils\Tests\Editor\Performance\PerformanceTestBase.cs(254,51): error CS1503: Argument 2: cannot convert from 'double' to 'long'
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(98,47): error CS0117: 'IOUtils' does not contain a definition for 'CreateDirectory'
 
-Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(574,25): error CS0117: 'IOUtils' does not contain a definition for 'EnsureDirectoryExists'
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(115,35): error CS0117: 'IOUtils' does not contain a definition for 'FileExists'
 
-Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(580,25): error CS0117: 'IOUtils' does not contain a definition for 'EnsureDirectoryExists'
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(137,35): error CS0117: 'IOUtils' does not contain a definition for 'FileExists'
 
-Assets\TByd.Core.Utils\Tests\Editor\Performance\RandomUtilsPerformanceTests.cs(360,51): error CS1503: Argument 1: cannot convert from 'float' to 'int'
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(156,35): error CS0117: 'IOUtils' does not contain a definition for 'DirectoryExists'
 
-Assets\TByd.Core.Utils\Tests\Editor\Performance\RandomUtilsPerformanceTests.cs(360,59): error CS1503: Argument 2: cannot convert from 'float' to 'int'
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(178,35): error CS0117: 'IOUtils' does not contain a definition for 'DirectoryExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(240,21): error CS0117: 'IOUtils' does not contain a definition for 'WriteAllText'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(265,21): error CS0117: 'IOUtils' does not contain a definition for 'WriteAllText'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(288,37): error CS0117: 'IOUtils' does not contain a definition for 'ReadAllBytes'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(310,64): error CS0117: 'IOUtils' does not contain a definition for 'ReadAllBytes'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(330,21): error CS0117: 'IOUtils' does not contain a definition for 'WriteAllBytes'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(355,21): error CS0117: 'IOUtils' does not contain a definition for 'WriteAllBytes'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(379,21): error CS0117: 'IOUtils' does not contain a definition for 'DeleteFile'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(401,47): error CS0117: 'IOUtils' does not contain a definition for 'DeleteFile'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(420,21): error CS0117: 'IOUtils' does not contain a definition for 'DeleteDirectory'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(439,21): error CS0117: 'IOUtils' does not contain a definition for 'DeleteDirectory'
+
+Assets\TByd.Core.Utils\Tests\Editor\Unit\IOUtilsTests.cs(461,47): error CS0117: 'IOUtils' does not contain a definition for 'DeleteDirectory'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(210,43): error CS0117: 'IOUtils' does not contain a definition for 'FileExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(229,43): error CS0117: 'IOUtils' does not contain a definition for 'DirectoryExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(249,43): error CS0117: 'IOUtils' does not contain a definition for 'FileExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(308,29): error CS0117: 'IOUtils' does not contain a definition for 'WriteAllText'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(331,46): error CS0117: 'IOUtils' does not contain a definition for 'ReadAllBytes'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(353,29): error CS0117: 'IOUtils' does not contain a definition for 'WriteAllBytes'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(459,29): error CS0117: 'IOUtils' does not contain a definition for 'DeleteFile'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(489,29): error CS0117: 'IOUtils' does not contain a definition for 'DeleteDirectory'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(544,39): error CS0117: 'IOUtils' does not contain a definition for 'FileExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(550,39): error CS0117: 'IOUtils' does not contain a definition for 'DirectoryExists'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(574,25): error CS0117: 'IOUtils' does not contain a definition for 'CreateDirectory'
+
+Assets\TByd.Core.Utils\Tests\Editor\Performance\IOUtilsPerformanceTests.cs(580,25): error CS0117: 'IOUtils' does not contain a definition for 'CreateDirectory'
 
