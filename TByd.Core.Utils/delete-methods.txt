@@ -1,0 +1,16 @@
+要删除的方法：
+
+1. CombinePath 方法 (大约第226行开始)
+2. CombinePathsRecursive 方法 (大约第321行开始)
+3. GetFileName 方法 (大约第500行开始)
+4. GetFileNameWithoutExtension 方法 (大约第531行开始)
+
+对应的测试方法：
+1. CombinePath_Performance (大约第73行)
+2. GetFileName_Performance (大约第97行)
+3. GetFileNameWithoutExtension_Performance (大约第119行)
+4. GetFileName_SystemIO_Performance (大约第185行)
+
+删除这些方法的步骤：
+1. 从IOUtils.cs文件中删除相关方法的实现
+2. 从IOUtilsPerformanceTests.cs文件中删除相关性能测试方法 
